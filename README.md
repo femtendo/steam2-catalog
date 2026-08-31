@@ -139,8 +139,7 @@ DISCOVERIES.md      write-ups of confirmed finds, with reproducible citations
 
 - **Archive**: the TeraRelease Steam2 content-server dump and its public mirrors.
 - **Depot names**: the curated `depot_labels.tsv` from
-  [dr3murr/steam2-winfsp](https://github.com/dr3murr/steam2-winfsp) — years of
-  painstaking work this project builds on.
+  [dr3murr/steam2-winfsp](https://github.com/dr3murr/steam2-winfsp) — dedicated work this project builds on.
 - **Format knowledge**: the blob/manifest reader here is an independent
   implementation; [extremebleem/steam2_downloader](https://github.com/extremebleem/steam2_downloader)
   was used as a format reference.
