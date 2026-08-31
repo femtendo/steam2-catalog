@@ -33,19 +33,66 @@ const FLAG_LABELS = {
 
 // ---- views ----
 function show(id) {
-  ["browse", "uncharted", "discoveries", "bundles", "community", "depot", "about"].forEach((v) =>
+  ["browse", "uncharted", "discoveries", "bundles", "tf2", "community", "depot", "about"].forEach((v) =>
     $("#view-" + v).classList.toggle("hidden", v !== id));
-  ["nav-browse", "nav-uncharted", "nav-discoveries", "nav-bundles", "nav-community", "nav-about"].forEach((n) =>
+  ["nav-browse", "nav-uncharted", "nav-discoveries", "nav-bundles", "nav-tf2", "nav-community", "nav-about"].forEach((n) =>
     $("#" + n).classList.toggle("active", n === "nav-" + id));
-  $("#searchbar").style.display = (id === "depot" || id === "about" || id === "community") ? "none" : "flex";
+  $("#searchbar").style.display = (id === "depot" || id === "about" || id === "community" || id === "tf2") ? "none" : "flex";
 }
 
 $("#nav-browse").onclick = () => { show("browse"); renderCatalog(); };
 $("#nav-uncharted").onclick = () => { show("uncharted"); renderUncharted(); };
 $("#nav-discoveries").onclick = () => { show("discoveries"); renderDiscoveries(); };
 $("#nav-bundles").onclick = () => { show("bundles"); renderBundles(); };
+$("#nav-tf2").onclick = () => { show("tf2"); renderTF2(); };
 $("#nav-community").onclick = () => show("community");
 $("#nav-about").onclick = () => show("about");
+
+// ---- tf2 hub ----
+async function renderTF2() {
+  const box = $("#tf2-content");
+  let data;
+  try { data = await (await fetch("data/tf2.json")).json(); }
+  catch (e) { box.innerHTML = '<div class="dim">TF2 data not built yet.</div>'; return; }
+
+  const fmtD = (s) => String(s || "").slice(0, 10);
+  const depotRows = data.depots.map((d) =>
+    `<tr data-depot="${d.depot}">
+      <td class="num depot-id">${d.depot}</td>
+      <td class="name">${esc(d.role)}</td>
+      <td class="num">${d.versions}</td>
+      <td class="num">${d.path_count.toLocaleString()}</td>
+      <td class="num">${d.map_count ? d.map_count + " maps" : "—"}</td>
+      <td class="num">${fmtBytes(d.dat_bytes)}</td>
+      <td class="num">${fmtD(d.first_date)} → ${fmtD(d.last_date)}</td>
+    </tr>`).join("");
+
+  const cutRows = (data.cut || []).slice(0, 100).map((c) =>
+    `<div class="row"><span>${esc(c.path)}</span><span class="sz">depot ${c.depot} · v${c.f}–v${c.l}</span></div>`).join("");
+
+  const tl = data.timeline || [];
+  const maxFiles = Math.max(1, ...tl.map((t) => t.files || 0));
+  const spark = tl.map((t) =>
+    `<div class="sparkbar" style="height:${Math.max(2, Math.round(60 * (t.files || 0) / maxFiles))}px" title="v${t.v}: ${t.files ?? "?"} files"></div>`).join("");
+
+  box.innerHTML = `
+    <div class="panel"><h3>Depot family</h3>
+      <table id="tf2-depots"><thead><tr>
+        <th class="num">Depot</th><th>Role</th><th class="num">Versions</th>
+        <th class="num">Paths</th><th class="num">Maps</th><th class="num">Payload</th><th class="num">Span</th>
+      </tr></thead><tbody>${depotRows}</tbody></table>
+    </div>
+    <div class="panel" style="margin-top:14px"><h3>Content version timeline (depot 441, ${tl.length} versions)</h3>
+      <div class="spark">${spark}</div>
+      <div class="dim small">Bar height = files in that version. First: v0 (${fmtD(tl[0] ? data.depots.find(d=>d.depot===441).first_date : "")}), last: v${tl.length ? tl[tl.length-1].v : "?"}</div>
+    </div>
+    <div class="panel cut-panel" style="margin-top:14px"><h3>Cut / changed content (${(data.cut || []).length}+ files removed by the final version)</h3>
+      <div class="pathlist">${cutRows || '<div class="dim small">none found yet</div>'}</div>
+    </div>`;
+
+  box.querySelectorAll("#tf2-depots tr[data-depot]").forEach((tr) =>
+    tr.addEventListener("click", () => openDepot(Number(tr.dataset.depot))));
+}
 
 // ---- uncharted ----
 function renderUncharted() {

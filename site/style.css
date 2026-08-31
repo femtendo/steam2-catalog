@@ -94,6 +94,11 @@ td .badge { margin-left: 8px; }
 .btn:hover { border-color: var(--accent); }
 .btn.accent { background: var(--accent); border-color: var(--accent); color: #0d1015; font-weight: 600; }
 .viewer-panel { margin: 14px 0; }
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 64px; overflow-x: auto; padding: 4px 0; }
+.sparkbar { width: 3px; min-width: 2px; background: var(--accent); opacity: .8; flex: 0 0 auto; }
+.sparkbar:hover { opacity: 1; background: var(--accent2); }
+#tf2-depots tbody tr { cursor: pointer; }
+#tf2-depots tbody tr:hover { background: var(--panel2); }
 .viewer-panel select { background: var(--panel2); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; max-width: 100%; }
 viewer-model, model-viewer { display: block; }
 .card .meta { color: var(--dim); font-size: 12px; margin-top: 4px; }
