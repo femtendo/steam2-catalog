@@ -40,12 +40,12 @@ function show(id) {
   $("#searchbar").style.display = (["browse", "uncharted", "discoveries", "games"].includes(id)) ? "flex" : "none";
 }
 
-$("#nav-browse").onclick = () => { show("browse"); renderCatalog(); };
-$("#nav-games").onclick = () => { show("games"); renderGames(); };
-$("#nav-uncharted").onclick = () => { show("uncharted"); renderUncharted(); };
-$("#nav-discoveries").onclick = () => { show("discoveries"); renderDiscoveries(); };
-$("#nav-bundles").onclick = () => { show("bundles"); renderBundles(); };
-$("#nav-tf2").onclick = () => { show("tf2"); renderTF2(); };
+$("#nav-browse").onclick = () => { lastListView = "browse"; show("browse"); renderCatalog(); };
+$("#nav-games").onclick = () => { lastListView = "games"; show("games"); renderGames(); };
+$("#nav-uncharted").onclick = () => { lastListView = "uncharted"; show("uncharted"); renderUncharted(); };
+$("#nav-discoveries").onclick = () => { lastListView = "discoveries"; show("discoveries"); renderDiscoveries(); };
+$("#nav-bundles").onclick = () => { lastListView = "bundles"; show("bundles"); renderBundles(); };
+$("#nav-tf2").onclick = () => { lastListView = "tf2"; show("tf2"); renderTF2(); };
 $("#nav-community").onclick = () => show("community");
 $("#nav-about").onclick = () => show("about");
 
@@ -206,6 +206,11 @@ async function openGame(slug) {
     };
   }
 }
+// ---- back navigation (depot view) ----
+let lastListView = "browse";
+const LIST_VIEWS = { browse: renderCatalog, games: renderGames, uncharted: renderUncharted,
+  discoveries: renderDiscoveries, bundles: renderBundles, tf2: renderTF2 };
+$("#back").onclick = () => { show(lastListView); LIST_VIEWS[lastListView](); };
 $("#back-games").onclick = () => { show("games"); renderGames(); };
 
 // ---- tf2 hub ----

@@ -18,7 +18,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 from s2_extract import resolve_chain, index_dir  # noqa: E402
 
-MIRRORS = ["https://de.steam2.download", "http://ro.steam2.download", "http://us.steam2.download"]
+MIRRORS = ["http://ro.steam2.download", "https://de.steam2.download", "http://us.steam2.download"]
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
 
 

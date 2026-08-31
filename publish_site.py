@@ -34,7 +34,20 @@ if not status.stdout.strip():
     print("site/dist unchanged — nothing to publish")
     sys.exit(0)
 
-# 4. commit + push
+# 4. commit + push to main (source of truth / dist snapshots)
 subprocess.run(["git", "commit", "-q", "-m", "Publish site data"], check=True)
 subprocess.run(["git", "push", "-q", "origin", "main"], check=True)
-print("published: site data committed and pushed")
+
+# 5. publish site/dist to gh-pages (the branch GitHub Pages serves).
+# HTTP pushes of the ~1.9 GB dist tree time out (408) — SSH works.
+wt = "/tmp/valveleak-ghpages"
+subprocess.run(["rm", "-rf", wt], check=True)
+subprocess.run(["git", "worktree", "add", wt, "origin/gh-pages"], check=True)
+subprocess.run(["bash", "-c",
+                f"cd {wt} && git rm -rq --ignore-unmatch . && "
+                f"cp -R {BASE}/site/dist/. . && git add -A && "
+                f"git commit -qm 'Publish site' && "
+                f"git push git@github.com:femtendo/steam2-catalog.git HEAD:gh-pages"],
+               check=True)
+subprocess.run(["git", "worktree", "remove", "--force", wt], check=True)
+print("published: site data committed and pushed (main + gh-pages)")
