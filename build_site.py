@@ -131,7 +131,8 @@ def main() -> None:
         shutil.copy(src, os.path.join(data_dir, "findings.json"))
 
     # ---- static assets ----
-    for name in ("index.html", "style.css", "app.js"):
+    for name in ("index.html", "style.css", "app.js", "counter.js",
+                 "privacy.html", "tos.html"):
         s = os.path.join(SITE_SRC, name)
         if os.path.exists(s):
             shutil.copy(s, os.path.join(DIST, name))
