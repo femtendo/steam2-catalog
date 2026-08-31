@@ -1,4 +1,4 @@
-name: Build and deploy site data
+name: Deploy site
 
 on:
   push:
@@ -15,45 +15,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch archive indexes
-        run: |
-          mkdir -p index
-          curl -sSf -o index/dats_dates.txt  https://de.steam2.download/dats_dates.txt
-          curl -sSf -o index/blobs_dates.txt https://de.steam2.download/blobs_dates.txt
-          curl -sSf -o index/dats_listing.html  https://de.steam2.download/dats/
-          curl -sSf -o index/blobs_listing.html https://de.steam2.download/blobs/
-
-      - name: Build catalog
-        run: python3 build_catalog.py
-
-      - name: Download blob metadata
-        run: python3 download_blobs.py
-
-      - name: Index manifests
-        run: python3 index_blobs.py
-
-      - name: Discovery pass
-        run: python3 find_uncharted.py
-
-      - name: Generate site
-        run: python3 build_site.py
+      - name: Restore site data cache
+        uses: actions/cache@v4
+        with:
+          path: site/dist/data
+          key: site-data-${{ github.sha }}
+          restore-keys: |
+            site-data-
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
