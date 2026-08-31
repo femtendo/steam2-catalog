@@ -333,6 +333,7 @@ async function openDepot(id) {
     `&depot=${id} v${d.max_version || "?"}` +
     `&paths=` + encodeURIComponent(paths.slice(0, 10).map((p) => p.p).join("\n"));
 
+  const cur = versions.length ? versions[versions.length - 1] : null;
   $("#depot").innerHTML = `
     <h2><span class="depot-id">${id}</span> ${esc(label)}</h2>
     <div class="sub">${versions.length} version(s) · ${paths.length.toLocaleString()} distinct file paths ·
@@ -346,7 +347,19 @@ async function openDepot(id) {
       <a href="https://steamdb.info/depot/${id}/" target="_blank" rel="noopener">SteamDB ↗</a>
       <a href="https://steamdb.info/app/${versions[0] && versions[0].app ? versions[0].app : id}/depots/" target="_blank" rel="noopener">SteamDB app ↗</a>
     </div>
-    <div id="viewer-slot"></div>
+    <div class="panel version-browser" style="margin-bottom:14px" id="vb-panel">
+      <h3>File browser by version</h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="vsel" style="flex:0 0 auto">
+          ${versions.map((v) => `<option value="${v.v}">v${v.v} — ${v.files ?? "?"} files</option>`).join("")}
+        </select>
+        <input id="vf-filter" type="text" placeholder="filter paths in this version..." style="flex:1;min-width:200px">
+        <span id="vstat" class="dim small"></span>
+      </div>
+      <div class="pathlist" id="vflist" style="max-height:360px;margin-top:8px">
+        <div class="dim small">${cur ? "loading version manifest…" : "no manifest data"}</div>
+      </div>
+    </div>
     <div class="cols">
       <div class="panel"><h3>File manifest (${paths.length.toLocaleString()})</h3>
         <input id="pf" type="text" placeholder="filter ${paths.length.toLocaleString()} paths...">
@@ -375,9 +388,70 @@ async function openDepot(id) {
     });
   }
   loadViewer(id);
+  wireVersionBrowser(id, versions);
 }
 
-// ---- 3D model viewer ----
+// wire the per-version file browser on a depot page
+async function wireVersionBrowser(depot, versions) {
+  const sel = $("#vsel");
+  if (!sel || !versions.length) return;
+  const data = await loadVFiles(depot);
+  const list = $("#vflist");
+  const stat = $("#vstat");
+  if (!data) {
+    if (list) list.innerHTML = '<div class="dim small">version-level manifest not available for this depot — use the union manifest below</div>';
+    return;
+  }
+  const apply = () => {
+    const v = sel.value;
+    const files = (data.files || {})[v] || [];
+    const q = ($("#vf-filter")?.value || "").toLowerCase();
+    const shown = q ? files.filter((f) => f[0].toLowerCase().includes(q)) : files;
+    if (list) list.innerHTML = renderVersionFiles(v, { [v]: shown });
+    if (stat) stat.textContent = `${shown.length.toLocaleString()} files in v${v}`;
+  };
+  sel.addEventListener("change", apply);
+  $("#vf-filter").addEventListener("input", apply);
+  apply();
+}
+
+// ---- per-version file browser ----
+const vfileCache = {};  // depot -> parsed {versions, files}
+
+async function fetchJSONgz(url) {
+  // .json.gz served as application/octet-stream; decompress in the browser.
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error("not found");
+  const buf = await resp.arrayBuffer();
+  if ("DecompressionStream" in window) {
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([buf]).stream().pipeThrough(ds);
+    const text = await new Response(stream).text();
+    return JSON.parse(text);
+  }
+  // some hosts serve pre-decompressed; try plain JSON
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+
+async function loadVFiles(depot) {
+  if (vfileCache[depot]) return vfileCache[depot];
+  let data;
+  try { data = await fetchJSONgz(`data/vfiles/${depot}.json.gz`); }
+  catch (e) { return null; }
+  vfileCache[depot] = data;
+  return data;
+}
+
+function renderVersionFiles(version, files) {
+  const list = files[String(version)] || [];
+  const max = 1500;
+  return list.slice(0, max).map((f) =>
+    `<div class="row"><span>${esc(f[0])}</span><span class="sz">${fmtBytes(f[1])}</span></div>`).join("") +
+    (list.length > max ? `<div class="dim small">+ ${(list.length - max).toLocaleString()} more</div>` : "") ||
+    '<div class="dim small">no manifest for this version</div>';
+}
+
+
 // Models are pre-extracted by build_bundles.py into data/models/<depot>/ as .glb,
 // each with a .meta.json listing its source path. Nothing loads unless it exists.
 async function loadViewer(depot) {
