@@ -21,6 +21,16 @@ body {
 
 .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
 
+#safety-bar {
+  background: #3d1f14;
+  color: #ffd9a8;
+  border-bottom: 1px solid #6b3a1f;
+  padding: 8px 20px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+#safety-bar strong { color: #ffb36b; }
+
 header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 0; }
 header .wrap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 h1 { font-size: 18px; margin: 0; font-weight: 600; }

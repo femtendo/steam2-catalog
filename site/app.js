@@ -21,15 +21,16 @@ function fmtDate(s) {
 
 // ---- views ----
 function show(id) {
-  ["browse", "discoveries", "depot", "about"].forEach((v) =>
+  ["browse", "discoveries", "bundles", "depot", "about"].forEach((v) =>
     $("#view-" + v).classList.toggle("hidden", v !== id));
-  ["nav-browse", "nav-discoveries", "nav-about"].forEach((n) =>
+  ["nav-browse", "nav-discoveries", "nav-bundles", "nav-about"].forEach((n) =>
     $("#" + n).classList.toggle("active", n === "nav-" + id));
   $("#searchbar").style.display = (id === "depot" || id === "about") ? "none" : "flex";
 }
 
 $("#nav-browse").onclick = () => show("browse");
 $("#nav-discoveries").onclick = () => { show("discoveries"); renderDiscoveries(); };
+$("#nav-bundles").onclick = () => { show("bundles"); renderBundles(); };
 $("#nav-about").onclick = () => show("about");
 
 // ---- browse ----
@@ -141,6 +142,37 @@ async function renderDiscoveries() {
   }).join("");
   box.querySelectorAll(".card").forEach((c) =>
     c.addEventListener("click", () => openDepot(Number(c.dataset.depot))));
+}
+
+// ---- bundles ----
+async function renderBundles() {
+  const box = $("#bundles");
+  let data = null;
+  try { data = await (await fetch("data/bundles.json")).json(); }
+  catch (e) {
+    box.innerHTML = '<div class="dim">No bundles published yet — the first verified ' +
+      'bundles are still in the pipeline.</div>';
+    return;
+  }
+  if (!data.bundles || !data.bundles.length) {
+    box.innerHTML = '<div class="dim">No verified bundles yet.</div>';
+    return;
+  }
+  box.innerHTML = data.bundles.map((b) =>
+    `<div class="card">
+      <div class="top"><span class="label">${esc(b.game)}</span>
+        <span class="badge">${b.map_count} maps</span>
+        <span class="badge">${fmtBytes(b.bytes)}</span>
+        <span class="badge">built ${esc((b.built || "").slice(0, 10))}</span></div>
+      <div class="meta">depots: ${(b.depots || []).join(", ")}</div>
+      <div class="meta"><a href="${esc(b.url)}">Download zip</a></div>
+    </div>`).join("")
+    + (data.queued || []).map((q) =>
+    `<div class="card">
+      <div class="top"><span class="label">${esc(q.game)}</span>
+        <span class="badge">queued</span></div>
+      <div class="meta">${q.map_count || "?"} maps identified — payload verification pending</div>
+    </div>`).join("");
 }
 
 // ---- boot ----

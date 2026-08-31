@@ -7,12 +7,19 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="safety-bar">
+  <strong>⚠ Safety notice:</strong> this catalog indexes unreleased and cut game content
+  from a 2003–2013 archive. Files may be unstable, incomplete, or unsafe to run —
+  <strong>extract and play only inside an isolated virtual machine</strong>. This site hosts
+  metadata only; game files come from community mirrors.
+</div>
 <header>
   <div class="wrap">
     <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
     <nav>
       <button id="nav-browse" class="active">Browse</button>
       <button id="nav-discoveries">Discoveries</button>
+      <button id="nav-bundles">Bundles</button>
       <button id="nav-about">About</button>
     </nav>
   </div>
@@ -47,6 +54,15 @@
     filename keywords (ep3, fstop, weaponizer, prototype…), cut content, and label-vs-content mismatch.
     Every entry links to reproducible depot + file paths.</p>
     <div id="discoveries"></div>
+  </section>
+
+  <section id="view-bundles" class="hidden">
+    <h2>Map Bundles <span class="dim">— extracted, verified maps per game</span></h2>
+    <p class="dim small">Each zip contains the map files recovered for one game, verified
+    against the archive's sha256 hashes, with a MANIFEST.txt inside listing depot, version,
+    and per-file hashes. Only depots that pass payload verification ship here —
+    everything else shows as queued.</p>
+    <div id="bundles"></div>
   </section>
 
   <section id="view-depot" class="hidden">
