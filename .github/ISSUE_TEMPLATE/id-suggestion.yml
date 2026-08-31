@@ -1,0 +1,40 @@
+name: "Suggest a depot ID"
+description: "Tell us what you think an unnamed or mislabeled depot is"
+labels: ["id-suggestion", "triage"]
+body:
+  - type: input
+    id: depot
+    attributes:
+      label: Depot ID
+      description: "The number from the catalog, e.g. 852"
+    validations:
+      required: true
+  - type: input
+    id: guess
+    attributes:
+      label: Your identification
+      description: "What do you think this depot is? Game name, project, content type — anything."
+    validations:
+      required: true
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: How sure are you?
+      options:
+        - "Certain (I have proof)"
+        - "Likely (strong evidence)"
+        - "Guess"
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: "File paths from the depot that support your ID (copy them from the depot page), SteamDB links, or anything else."
+    validations:
+      required: true
+  - type: input
+    id: sources
+    attributes:
+      label: Supporting sources
+      description: "Links: SteamDB, wiki pages, interviews, videos with timestamps…"

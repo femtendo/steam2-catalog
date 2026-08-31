@@ -33,17 +33,45 @@ const FLAG_LABELS = {
 
 // ---- views ----
 function show(id) {
-  ["browse", "discoveries", "bundles", "depot", "about"].forEach((v) =>
+  ["browse", "uncharted", "discoveries", "bundles", "community", "depot", "about"].forEach((v) =>
     $("#view-" + v).classList.toggle("hidden", v !== id));
-  ["nav-browse", "nav-discoveries", "nav-bundles", "nav-about"].forEach((n) =>
+  ["nav-browse", "nav-uncharted", "nav-discoveries", "nav-bundles", "nav-community", "nav-about"].forEach((n) =>
     $("#" + n).classList.toggle("active", n === "nav-" + id));
-  $("#searchbar").style.display = (id === "depot" || id === "about") ? "none" : "flex";
+  $("#searchbar").style.display = (id === "depot" || id === "about" || id === "community") ? "none" : "flex";
 }
 
-$("#nav-browse").onclick = () => show("browse");
+$("#nav-browse").onclick = () => { show("browse"); renderCatalog(); };
+$("#nav-uncharted").onclick = () => { show("uncharted"); renderUncharted(); };
 $("#nav-discoveries").onclick = () => { show("discoveries"); renderDiscoveries(); };
 $("#nav-bundles").onclick = () => { show("bundles"); renderBundles(); };
+$("#nav-community").onclick = () => show("community");
 $("#nav-about").onclick = () => show("about");
+
+// ---- uncharted ----
+function renderUncharted() {
+  const box = $("#uncharted");
+  const rows = catalog.filter((d) =>
+    (d.flags || []).includes("unlabeled") ||
+    (!d.label && (d.manifest_roots || []).length));
+  if (!rows.length) {
+    box.innerHTML = '<div class="dim">Nothing uncharted right now — every depot is labeled.</div>';
+    return;
+  }
+  box.innerHTML = rows.slice(0, 300).map((d) => {
+    const roots = (d.manifest_roots || []).filter((r) => r && !r.includes(".")).slice(0, 6);
+    return `<div class="card" data-depot="${d.depot}">
+      <div class="top"><span class="depot-id">${d.depot}</span>
+        <span class="label dim">unnamed</span>
+        <span class="badge">v${d.max_version}</span>
+        <span class="badge">${fmtYear(d.first_date)}</span></div>
+      <div class="meta mono">${roots.map(esc).join(" · ") || "(no manifest folders)"}</div>
+      <div class="meta">${(d.flag_keywords || []).length ? "markers: " + d.flag_keywords.map(esc).join(" · ") : ""}</div>
+    </div>`;
+  }).join("") + (rows.length > 300
+    ? `<div class="dim small">+ ${rows.length - 300} more — search them in Browse with an empty name filter</div>` : "");
+  box.querySelectorAll(".card").forEach((c) =>
+    c.addEventListener("click", () => openDepot(Number(c.dataset.depot))));
+}
 
 // ---- browse ----
 let sortKey = "depot";
@@ -160,6 +188,18 @@ async function openDepot(id) {
         `<div class="row"><span>${esc(p.p)}</span><span class="sz">v${p.f}–v${p.l}</span></div>`).join("") +
       `</div></div>` : "";
 
+  const REPO = "femtendo/steam2-catalog";
+  const suggestUrl = `https://github.com/${REPO}/issues/new?template=id-suggestion.yml` +
+    `&depot=${id}` +
+    `&confidence=Guess` +
+    `&evidence=` + encodeURIComponent(
+      `Root folders: ${(d.manifest_roots || []).join(", ")}\n` +
+      `Versions: ${versions.length} (latest v${d.max_version}), ${fmtDate(d.first_date)} → ${fmtDate(d.last_date)}\n` +
+      `Sample paths:\n` + paths.slice(0, 15).map((p) => p.p).join("\n"));
+  const findUrl = `https://github.com/${REPO}/issues/new?template=find-report.yml` +
+    `&depot=${id} v${d.max_version || "?"}` +
+    `&paths=` + encodeURIComponent(paths.slice(0, 10).map((p) => p.p).join("\n"));
+
   $("#depot").innerHTML = `
     <h2><span class="depot-id">${id}</span> ${esc(label)}</h2>
     <div class="sub">${versions.length} version(s) · ${paths.length.toLocaleString()} distinct file paths ·
@@ -168,9 +208,12 @@ async function openDepot(id) {
       ${d.flag_score ? `<span class="badge">interest score ${d.flag_score}</span>` : ""}</div>` : ""}
     ${(d.flag_keywords || []).length ? `<div class="sub">Markers found: ${d.flag_keywords.map(esc).join(" · ")}</div>` : ""}
     <div class="linkrow">
+      <a class="btn accent" href="${suggestUrl}" target="_blank" rel="noopener">Suggest an ID</a>
+      <a class="btn" href="${findUrl}" target="_blank" rel="noopener">Report a find</a>
       <a href="https://steamdb.info/depot/${id}/" target="_blank" rel="noopener">SteamDB ↗</a>
       <a href="https://steamdb.info/app/${versions[0] && versions[0].app ? versions[0].app : id}/depots/" target="_blank" rel="noopener">SteamDB app ↗</a>
     </div>
+    <div id="viewer-slot"></div>
     <div class="cols">
       <div class="panel"><h3>File manifest (${paths.length.toLocaleString()})</h3>
         <input id="pf" type="text" placeholder="filter ${paths.length.toLocaleString()} paths...">
@@ -198,6 +241,43 @@ async function openDepot(id) {
         .map((p) => `<div class="row"><span>${esc(p.p)}</span><span class="sz">v${p.f}–v${p.l}</span></div>`).join("");
     });
   }
+  loadViewer(id);
+}
+
+// ---- 3D model viewer ----
+// Models are pre-extracted by build_bundles.py into data/models/<depot>/ as .glb,
+// each with a .meta.json listing its source path. Nothing loads unless it exists.
+async function loadViewer(depot) {
+  const slot = $("#viewer-slot");
+  if (!slot) return;
+  let files = [];
+  try {
+    files = await (await fetch(`data/models/${depot}/index.json`)).json();
+  } catch (e) { return; } // no models for this depot — slot stays empty
+  if (!files.length) return;
+
+  slot.innerHTML = `
+    <div class="panel viewer-panel">
+      <h3>Models from this depot <span class="dim small">(drag to rotate — rendered from the original files)</span></h3>
+      <div class="viewer-row">
+        <select id="model-pick">
+          ${files.map((f) => `<option value="${esc(f.file)}">${esc(f.label)}</option>`).join("")}
+        </select>
+      </div>
+      <model-viewer id="mv" camera-controls auto-rotate shadow-intensity="1"
+        exposure="1" style="width:100%;height:420px;background:#0d1015;border-radius:6px;"></model-viewer>
+      <div class="meta small dim" id="mv-src"></div>
+    </div>`;
+
+  const mv = $("#mv");
+  const pick = $("#model-pick");
+  const setModel = () => {
+    const f = files.find((x) => x.file === pick.value) || files[0];
+    mv.src = `data/models/${depot}/${f.file}`;
+    $("#mv-src").textContent = "source: " + f.src;
+  };
+  pick.addEventListener("change", setModel);
+  setModel();
 }
 
 function renderPaths(paths) {

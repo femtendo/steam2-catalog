@@ -1,0 +1,36 @@
+name: "Report a find"
+description: "You found something notable in a depot (cut content, prototype asset, …)"
+labels: ["discovery", "triage"]
+body:
+  - type: input
+    id: depot
+    attributes:
+      label: Depot ID and version
+      description: "e.g. 852 v0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you find?
+      description: "Describe the content and why it matters."
+    validations:
+      required: true
+  - type: textarea
+    id: paths
+    attributes:
+      label: Exact file paths
+      description: "From the depot page manifest, so others can reproduce."
+    validations:
+      required: true
+  - type: checkboxes
+    id: verify
+    attributes:
+      label: Verification
+      options:
+        - label: "I extracted and confirmed this from the payload"
+        - label: "Manifest-only (haven't extracted yet)"
+  - type: textarea
+    id: extras
+    attributes:
+      label: Screenshots / renders / links

@@ -18,8 +18,10 @@
     <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
     <nav>
       <button id="nav-browse" class="active">Browse</button>
+      <button id="nav-uncharted">Uncharted</button>
       <button id="nav-discoveries">Discoveries</button>
       <button id="nav-bundles">Bundles</button>
+      <button id="nav-community">Community</button>
       <button id="nav-about">About</button>
     </nav>
   </div>
@@ -64,6 +66,41 @@
     <div id="bundles"></div>
   </section>
 
+  <section id="view-uncharted" class="hidden">
+    <h2>Uncharted <span class="dim">— depots nobody has identified yet</span></h2>
+    <p class="dim small">These depots have no confirmed name. The folders shown come from
+    their own file manifests — click one to inspect every file path, and if you know
+    (or can guess) what it is, hit <b>Suggest an ID</b>. Every suggestion is reviewed
+    and credited.</p>
+    <div id="uncharted"></div>
+  </section>
+
+  <section id="view-community" class="hidden">
+    <h2>Community <span class="dim">— help catalog the archive</span></h2>
+    <div class="panel">
+      <h3>How a depot gets its name</h3>
+      <ol class="steps">
+        <li><b>Machine evidence.</b> Every depot's file manifest is parsed automatically — the folders and paths inside are recorded as-is.</li>
+        <li><b>Curated names.</b> Depots already identified by the community carry those names (from the steam2-winfsp label table).</li>
+        <li><b>Your suggestions.</b> Anything unnamed or mislabeled shows on this site with its manifest evidence. Click <b>Suggest an ID</b>, fill in the prefilled GitHub issue, submit.</li>
+        <li><b>Review.</b> Maintainers check the evidence and confirm or comment. Confirmed IDs land in the label table and the site updates.</li>
+        <li><b>Credit.</b> Every accepted ID credits its submitter in the commit and the discovery notes.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h3>Report a find</h3>
+      <p class="small">Found cut content, a prototype asset, anything notable? Use
+      <b>Report a find</b> on the depot page (or the issue templates on GitHub). Findings
+      verified against the payload get published on the Discoveries page with your credit.</p>
+      <p><a class="btn" href="https://github.com/femtendo/steam2-catalog/issues/new?template=find-report.yml" target="_blank" rel="noopener">Open the find-report form ↗</a></p>
+    </div>
+    <div class="panel">
+      <h3>Safety</h3>
+      <p class="small">Extract and run archive content only inside an isolated virtual
+      machine. These are 2003–2013 files that were never quality-controlled.</p>
+    </div>
+  </section>
+
   <section id="view-depot" class="hidden">
     <button id="back" class="back">← back</button>
     <div id="depot"></div>
@@ -88,6 +125,7 @@
   <span>Metadata index — no copyrighted payloads are hosted or redistributed.</span>
 </footer>
 
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

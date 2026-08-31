@@ -87,6 +87,15 @@ td .badge { margin-left: 8px; }
 .linkrow a:hover { text-decoration: underline; }
 .cut-panel { border-color: var(--accent2); margin-top: 16px; }
 .cut-panel h3 { color: var(--accent2); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.steps { padding-left: 20px; }
+.steps li { margin: 6px 0; }
+.btn { display: inline-block; background: var(--panel2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.accent { background: var(--accent); border-color: var(--accent); color: #0d1015; font-weight: 600; }
+.viewer-panel { margin: 14px 0; }
+.viewer-panel select { background: var(--panel2); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; max-width: 100%; }
+viewer-model, model-viewer { display: block; }
 .card .meta { color: var(--dim); font-size: 12px; margin-top: 4px; }
 .card .ev { margin-top: 8px; }
 .card .ev .kw { color: var(--accent2); font-size: 12px; }
