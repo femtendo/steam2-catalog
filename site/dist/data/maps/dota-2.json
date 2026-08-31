@@ -1,0 +1,1 @@
+{"game":"Dota 2","slug":"dota-2","maps":[{"path":"dota/maps/dota.bsp","size":16304648,"depots":[681],"first_ver":0,"last_ver":0,"type":"bsp"},{"path":"dota/maps/dota_glade.bsp","size":2237872,"depots":[681],"first_ver":0,"last_ver":0,"type":"bsp"}],"bsp_count":2,"sidecar_count":2}

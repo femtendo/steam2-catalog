@@ -1,0 +1,1 @@
+{"game":"Dota 2 Workshop Tools Alpha","slug":"dota-2-workshop-tools-alpha","maps":[{"path":"dota/maps/dota.bsp","size":17770492,"depots":[571],"first_ver":0,"last_ver":72,"type":"bsp"},{"path":"dota/maps/dota_glade.bsp","size":2237872,"depots":[571],"first_ver":39,"last_ver":71,"type":"bsp"}],"bsp_count":2,"sidecar_count":2}

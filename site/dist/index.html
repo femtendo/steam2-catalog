@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steam2 Archive Catalog</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="safety-bar">
+  <strong>⚠ Safety notice:</strong> this catalog indexes unreleased and cut game content
+  from a 2003–2013 archive. Files may be unstable, incomplete, or unsafe to run —
+  <strong>extract and play only inside an isolated virtual machine</strong>. This site hosts
+  metadata only; game files come from community mirrors.
+</div>
+<header>
+  <div class="wrap">
+    <div class="header-row">
+      <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
+      <div id="verify-badge" class="verify-badge" title="versions with fully indexed file manifests / all versions in the archive">
+        <span class="pct">—%</span><span class="lbl">verified</span>
+      </div>
+    </div>
+    <nav>
+      <button id="nav-browse" class="active">Browse</button>
+      <button id="nav-games">Games</button>
+      <button id="nav-uncharted">Uncharted</button>
+      <button id="nav-discoveries">Discoveries</button>
+      <button id="nav-bundles">Bundles</button>
+      <button id="nav-tf2">TF2 Hub</button>
+      <button id="nav-community">Community</button>
+      <button id="nav-about">About</button>
+    </nav>
+  </div>
+</header>
+
+<div id="searchbar" class="wrap">
+  <input id="search" type="text" placeholder="Filter by depot id or name (e.g. 441 or &quot;Portal&quot;)..." autocomplete="off">
+  <span id="result-count" class="dim"></span>
+</div>
+
+<main class="wrap">
+  <section id="view-browse">
+    <table id="catalog">
+      <thead>
+        <tr>
+          <th class="num" data-key="depot">Depot</th>
+          <th data-key="label">Name</th>
+          <th class="num" data-key="distinct_versions">Ver</th>
+          <th class="num" data-key="path_count">Files</th>
+          <th class="num" data-key="dat_bytes">Payload</th>
+          <th class="num" data-key="first_date">Span</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="view-discoveries" class="hidden">
+    <h2>Discoveries <span class="dim">— auto-flagged depots worth a closer look</span></h2>
+    <p class="dim small">Scored by: unlabeled / test-app / pre-release labels, unreleased-project
+    filename keywords (ep3, fstop, weaponizer, prototype…), cut content, and label-vs-content mismatch.
+    Every entry links to reproducible depot + file paths.</p>
+    <div id="discoveries"></div>
+  </section>
+
+  <section id="view-bundles" class="hidden">
+    <h2>Map Bundles <span class="dim">— extracted, verified maps per game</span></h2>
+    <p class="dim small">Each zip contains the map files recovered for one game, verified
+    against the archive's sha256 hashes, with a MANIFEST.txt inside listing depot, version,
+    and per-file hashes. Only depots that pass payload verification ship here —
+    everything else shows as queued.</p>
+    <div id="bundles"></div>
+  </section>
+
+  <section id="view-uncharted" class="hidden">
+    <h2>Uncharted <span class="dim">— depots nobody has identified yet</span></h2>
+    <p class="dim small">These depots have no confirmed name. The folders shown come from
+    their own file manifests — click one to inspect every file path, and if you know
+    (or can guess) what it is, hit <b>Suggest an ID</b>. Every suggestion is reviewed
+    and credited.</p>
+    <div id="uncharted"></div>
+  </section>
+
+  <section id="view-community" class="hidden">
+    <h2>Community <span class="dim">— help catalog the archive</span></h2>
+    <div class="panel">
+      <h3>How a depot gets its name</h3>
+      <ol class="steps">
+        <li><b>Machine evidence.</b> Every depot's file manifest is parsed automatically — the folders and paths inside are recorded as-is.</li>
+        <li><b>Curated names.</b> Depots already identified by the community carry those names (from the steam2-winfsp label table).</li>
+        <li><b>Your suggestions.</b> Anything unnamed or mislabeled shows on this site with its manifest evidence. Click <b>Suggest an ID</b>, fill in the prefilled GitHub issue, submit.</li>
+        <li><b>Review.</b> Maintainers check the evidence and confirm or comment. Confirmed IDs land in the label table and the site updates.</li>
+        <li><b>Credit.</b> Every accepted ID credits its submitter in the commit and the discovery notes.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h3>Report a find</h3>
+      <p class="small">Found cut content, a prototype asset, anything notable? Use
+      <b>Report a find</b> on the depot page (or the issue templates on GitHub). Findings
+      verified against the payload get published on the Discoveries page with your credit.</p>
+      <p><a class="btn" href="https://github.com/femtendo/steam2-catalog/issues/new?template=find-report.yml" target="_blank" rel="noopener">Open the find-report form ↗</a></p>
+    </div>
+    <div class="panel">
+      <h3>Safety</h3>
+      <p class="small">Extract and run archive content only inside an isolated virtual
+      machine. These are 2003–2013 files that were never quality-controlled.</p>
+    </div>
+  </section>
+
+  <section id="view-tf2" class="hidden">
+    <h2>Team Fortress 2 <span class="dim">— the leak's TF2 family, mapped</span></h2>
+    <p class="dim small">TF2 shipped through Steam2 with its full update history intact:
+    every content patch from the October 2007 beta through 2013, plus the 2008 beta
+    branch. This hub tracks the depots, the version timeline, cut content, and
+    playable bundles.</p>
+    <div id="tf2-content"><span class="dim">Loading…</span></div>
+  </section>
+
+  <section id="view-games" class="hidden">
+    <h2>Games <span class="dim">— every game in the archive, all depots grouped</span></h2>
+    <div id="games-grid" class="grid"></div>
+    <div id="result-count-games" class="dim small"></div>
+  </section>
+
+  <section id="view-game" class="hidden">
+    <button id="back-games" class="back">← all games</button>
+    <div id="game-detail"></div>
+  </section>
+
+  <section id="view-depot" class="hidden">
+    <button id="back" class="back">← back</button>
+    <div id="depot"></div>
+  </section>
+
+  <section id="view-about" class="hidden">
+    <h2>About</h2>
+    <p>This is an index of the <b>Steam2 content-server archive</b> — Valve's pre-SteamPipe content
+    delivery system, spanning roughly 2003–2013. The archive holds <span id="stat-files">—</span> files
+    across <span id="stat-depots">—</span> depots (~12 TB of <code>.dat</code> payloads plus ~16 GB of
+    <code>.blob</code> metadata).</p>
+    <p>This site catalogs the <b>metadata</b> only: depot names, version history, and the complete
+    file manifest (paths, sizes, hashes) of every depot — no game files are hosted here. Download links
+    point to the public mirrors run by the community.</p>
+    <p class="dim small">Depot names are derived from the annotated TeraRelease index, curated and
+    published in the <code>steam2-winfsp</code> project. Manifests are parsed from the blobs with an
+    independent reader.</p>
+  </section>
+</main>
+
+<footer class="wrap dim small">
+  <span>Metadata index — no copyrighted payloads are hosted or redistributed.</span>
+</footer>
+
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Games tiles — mockup</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; background:#12151a; color:#d7dee8; font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif; }
+.badge-top { background:#1c3a24; color:#7fd08f; padding:8px 20px; font-size:13px; border-bottom:1px solid #2c5a3a; }
+header { background:#1a1f27; border-bottom:1px solid #2c3644; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+h1 { font-size:18px; margin:0; }
+.dim { color:#7d8a99; }
+.vb { background:#202733; border:1px solid #2c3644; border-radius:8px; padding:6px 14px; display:flex; align-items:baseline; gap:8px; }
+.vb .pct { font-size:20px; font-weight:700; color:#5aa469; }
+.vb .lbl { font-size:11px; color:#7d8a99; }
+.wrap { max-width:1150px; margin:0 auto; padding:10px 20px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px; margin-top:12px; }
+.tile { background:#1a1f27; border:1px solid #2c3644; border-radius:10px; padding:12px; cursor:pointer; transition:border-color .12s; }
+.tile:hover { border-color:#6f9fc8; transform:translateY(-2px); }
+.icon { position:relative; width:100%; aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.glyph { font-size:44px; color:#12151acc; text-shadow:0 1px 0 #ffffff22; }
+.cut { position:absolute; top:6px; right:6px; background:#12151acc; color:#d98c4a; font-size:10px; padding:2px 6px; border-radius:8px; }
+.tname { font-weight:600; font-size:13px; line-height:1.3; min-height:34px; }
+.tmeta { color:#7d8a99; font-size:11.5px; margin-top:4px; }
+.tmeta2 { color:#7d8a99; font-size:11px; margin-top:2px; }
+.tbar { height:4px; background:#202733; border-radius:2px; margin-top:8px; overflow:hidden; }
+.fill { height:100%; background:#5aa469; border-radius:2px; }
+.tver { color:#5aa469; font-size:10.5px; margin-top:4px; }
+.legend { margin-top:16px; color:#7d8a99; font-size:12px; }
+</style></head><body>
+<div class="badge-top">MOCKUP PREVIEW — projected end-of-tonight state · tile layout v2</div>
+<header>
+  <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
+  <div class="vb"><span class="pct">94.7%</span><span class="lbl">54,530 / 57,587 versions verified</span></div>
+</header>
+<div class="wrap">
+<h2>Games <span class="dim">— tile view, sorted by map count</span></h2>
+<div class="grid">
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#d98c4a,#d98c4abb)">
+          <span class="glyph">wrench</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Team Fortress 2</div>
+        <div class="tmeta">91 maps · 10 depots</div>
+        <div class="tmeta2">397 versions · 12.1 GiB</div>
+        <div class="tbar"><div class="fill" style="width:96.2%"></div></div>
+        <div class="tver">96.2% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#5aaee0,#5aaee0bb)">
+          <span class="glyph">◉</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Portal 2 (+ beta)</div>
+        <div class="tmeta">96 maps · 18 depots</div>
+        <div class="tmeta2">11 versions · 14.6 GiB</div>
+        <div class="tbar"><div class="fill" style="width:95.8%"></div></div>
+        <div class="tver">95.8% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#c05050,#c05050bb)">
+          <span class="glyph">✶</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Postal 3</div>
+        <div class="tmeta">87 maps · 4 depots</div>
+        <div class="tmeta2">12 versions · 5.5 GiB</div>
+        <div class="tbar"><div class="fill" style="width:88.6%"></div></div>
+        <div class="tver">88.6% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#c8a44a,#c8a44abb)">
+          <span class="glyph">✚</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Counter-Strike 1.6 / CZ</div>
+        <div class="tmeta">61 maps · 22 depots</div>
+        <div class="tmeta2">49 versions · 1.9 GiB</div>
+        <div class="tbar"><div class="fill" style="width:98.1%"></div></div>
+        <div class="tver">98.1% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#b0a040,#b0a040bb)">
+          <span class="glyph">☉</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Duke Nukem Forever</div>
+        <div class="tmeta">67 maps · 25 depots</div>
+        <div class="tmeta2">29 versions · 9.8 GiB</div>
+        <div class="tbar"><div class="fill" style="width:90.2%"></div></div>
+        <div class="tver">90.2% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#5a8fd9,#5a8fd9bb)">
+          <span class="glyph">✚</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Counter-Strike: Source</div>
+        <div class="tmeta">68 maps · 14 depots</div>
+        <div class="tmeta2">61 versions · 3.8 GiB</div>
+        <div class="tbar"><div class="fill" style="width:97.0%"></div></div>
+        <div class="tver">97.0% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#e07830,#e07830bb)">
+          <span class="glyph">λ</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Half-Life 2</div>
+        <div class="tmeta">54 maps · 45 depots</div>
+        <div class="tmeta2">56 versions · 6.2 GiB</div>
+        <div class="tbar"><div class="fill" style="width:97.4%"></div></div>
+        <div class="tver">97.4% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#7ab5e0,#7ab5e0bb)">
+          <span class="glyph">◉</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Portal</div>
+        <div class="tmeta">41 maps · 8 depots</div>
+        <div class="tmeta2">40 versions · 2.1 GiB</div>
+        <div class="tbar"><div class="fill" style="width:96.9%"></div></div>
+        <div class="tver">96.9% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#b8452e,#b8452ebb)">
+          <span class="glyph">☠</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Left 4 Dead 2</div>
+        <div class="tmeta">39 maps · 12 depots</div>
+        <div class="tmeta2">63 versions · 5.7 GiB</div>
+        <div class="tbar"><div class="fill" style="width:94.3%"></div></div>
+        <div class="tver">94.3% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#a03d28,#a03d28bb)">
+          <span class="glyph">☠</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Left 4 Dead</div>
+        <div class="tmeta">27 maps · 9 depots</div>
+        <div class="tmeta2">33 versions · 4.1 GiB</div>
+        <div class="tbar"><div class="fill" style="width:95.1%"></div></div>
+        <div class="tver">95.1% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#e09030,#e09030bb)">
+          <span class="glyph">λ</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Half-Life (GoldSrc)</div>
+        <div class="tmeta">38 maps · 11 depots</div>
+        <div class="tmeta2">57 versions · 0.9 GiB</div>
+        <div class="tbar"><div class="fill" style="width:97.7%"></div></div>
+        <div class="tver">97.7% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#7a8c5a,#7a8c5abb)">
+          <span class="glyph">★</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Day of Defeat: Source</div>
+        <div class="tmeta">24 maps · 6 depots</div>
+        <div class="tmeta2">44 versions · 2.4 GiB</div>
+        <div class="tbar"><div class="fill" style="width:96.0%"></div></div>
+        <div class="tver">96.0% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#d87840,#d87840bb)">
+          <span class="glyph">λ</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">HL2: Deathmatch</div>
+        <div class="tmeta">22 maps · 4 depots</div>
+        <div class="tmeta2">21 versions · 1.4 GiB</div>
+        <div class="tbar"><div class="fill" style="width:96.5%"></div></div>
+        <div class="tver">96.5% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#5ab58a,#5ab58abb)">
+          <span class="glyph">🐜</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Alien Swarm</div>
+        <div class="tmeta">14 maps · 3 depots</div>
+        <div class="tmeta2">9 versions · 1.1 GiB</div>
+        <div class="tbar"><div class="fill" style="width:97.2%"></div></div>
+        <div class="tver">97.2% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#d9a44a,#d9a44abb)">
+          <span class="glyph">✚</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">CS:GO (beta)</div>
+        <div class="tmeta">11 maps · 5 depots</div>
+        <div class="tmeta2">12 versions · 3.3 GiB</div>
+        <div class="tbar"><div class="fill" style="width:91.4%"></div></div>
+        <div class="tver">91.4% verified</div>
+      </div>
+      <div class="tile" onclick="void(0)">
+        <div class="icon" style="background:linear-gradient(135deg,#a04030,#a04030bb)">
+          <span class="glyph">⚔</span>
+          <span class="cut" title="maps cut before final release">✂ 3</span>
+        </div>
+        <div class="tname">Dota 2 (beta)</div>
+        <div class="tmeta">6 maps · 4 depots</div>
+        <div class="tmeta2">31 versions · 5.9 GiB</div>
+        <div class="tbar"><div class="fill" style="width:92.0%"></div></div>
+        <div class="tver">92.0% verified</div>
+      </div>
+</div>
+<div class="legend">
+✂ = cut maps present (existed in early versions, removed before final) ·
+green bar = per-game verification % ·
+icon tiles are generated per game (monogram/glyph on its color) — swap for real art later.
+</div>
+</div></body></html>
