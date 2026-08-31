@@ -4,9 +4,11 @@ Signals (weighted):
   unlabeled          no curated name, or a placeholder name          +10
   valve_test_app     label is a ValveTestApp* internal test app      +15
   pre_release        label marks beta/demo/press/review/prototype    +5
-  tier1 keyword      unreleased-project filename hit (ep3/fstop/…)   +25 each (capped)
-  tier2 keyword      dev/cut marker filename hit (wip/unused/…)      +10 each (capped)
-  cut_content        file present early, gone by final version       +8  (+20 if its name is tier1/tier2)
+  valve_marker       Valve-specific unreleased marker (fstop,        +25 each
+                     weaponizer, icegun, paintgun)
+  ep3_marker         Half-Life Ep3 marker (episode3/ep3/...)         +25 if Valve depot, else +5
+  dev_marker         generic dev/cut marker (wip/unused/proto/...)   +10 each
+  cut_content        file present early, gone by final version       +8  (+20 if its name is a marker)
   content_mismatch   non-game label but game payload inside          +8
 
 Outputs: index/findings.json (machine) and a ranked human summary on stdout.
@@ -17,37 +19,32 @@ import json
 import os
 import re
 import sqlite3
-import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(BASE, "index", "steam2.db")
 
 PLACEHOLDER = {"unknown / no depot", "unknown", "no depot", "n/a", "none", "-", "?", "--", ""}
 
-TIER1 = re.compile(
-    r"episode\s*3|episode_?3|/ep3/|ep3_|_ep3\b|ep3\b|"
-    r"f-?stop|f_?stop|"
-    r"weaponizer|"
-    r"ice\s*gun|ice_?gun|"
-    r"paint\s*gun|paint_?gun|"
-    r"pre-?alpha|pre_?alpha|"
-    r"prototype|proto_",
+VALVE_ONLY = re.compile(
+    r"f-?stop|f_?stop|weaponizer|ice\s*gun|ice_?gun|paint\s*gun|paint_?gun",
+    re.IGNORECASE,
+)
+EP3 = re.compile(r"episode\s*3|episode_?3|/ep3/|ep3_|_ep3\b|\bep3\b", re.IGNORECASE)
+DEV = re.compile(
+    r"\bwip\b|_wip|wip_|unused|unreleased|scrapped|cut_|_cut\b|internal|"
+    r"devtest|placeholder|_old|old_|backup|draft|deleted|pre-?alpha|pre_?alpha|prototype|proto_",
     re.IGNORECASE,
 )
 
-TIER2 = re.compile(
-    r"\bwip\b|_wip|wip_|unused|unreleased|scrapped|cut_|_cut\b|"
-    r"internal|devtest|placeholder|_old|old_|backup|draft|deleted",
-    re.IGNORECASE,
-)
-
-GAME_EXT = re.compile(r"\.(bsp|vpk|map|vmf|vcd|exe|dll|nut|bsp2)$", re.IGNORECASE)
-NON_GAME_LABEL = re.compile(
-    r"trailer|video|movie|teaser|short|tv spot|commercial|intro|localiz", re.IGNORECASE
-)
+GAME_EXT = re.compile(r"\.(bsp|vpk|map|vmf|vcd|exe|dll|nut)$", re.IGNORECASE)
+NON_GAME_LABEL = re.compile(r"trailer|video|movie|teaser|short|tv spot|commercial|intro|localiz",
+                            re.IGNORECASE)
 TEST_APP = re.compile(r"test\s*app|testapp|valvetest", re.IGNORECASE)
-PRE_RELEASE = re.compile(
-    r"beta|demo|press|review|preview|prototype|alpha|release candidate|internal build",
+PRE_RELEASE = re.compile(r"beta|demo|press|review|preview|prototype|alpha|release candidate",
+                         re.IGNORECASE)
+VALVE_LABEL = re.compile(
+    r"half-?life|portal|left 4 dead|team fortress|counter-?strike|day of defeat|"
+    r"dota|alien swarm|ricochet|deathmatch|source|valvetest|valve test",
     re.IGNORECASE,
 )
 
@@ -71,10 +68,16 @@ def main() -> None:
     ):
         stats[r["depot"]] = dict(r)
 
-    # Streaming scan of every path -> per-depot keyword hits + ext histogram + game-ext count.
-    hits = {}  # depot -> {kw -> [paths]}
+    # Streaming scan of every path -> per-depot keyword hits (by category) + ext histogram.
+    hits = {}  # depot -> {"v": {kw:[paths]}, "e": {kw:[paths]}, "d": {kw:[paths]}}
     game_ext = {}  # depot -> count
     cut = {}  # depot -> {"total": n, "interesting": [paths]}
+
+    def rec(depot, cat, kw, path):
+        d = hits.setdefault(depot, {"v": {}, "e": {}, "d": {}})
+        lst = d[cat].setdefault(kw, [])
+        if len(lst) < 12:
+            lst.append(path)
 
     for r in con.execute("SELECT depot,path,size,first_ver,last_ver FROM depot_paths"):
         depot = r["depot"]
@@ -82,13 +85,16 @@ def main() -> None:
         p = path.lower()
         mx = stats.get(depot, {}).get("max_version") or 0
 
-        d = hits.setdefault(depot, {})
-        t1 = {m.group(0).lower() for m in TIER1.finditer(p)}
-        t2 = {m.group(0).lower() for m in TIER2.finditer(p)}
-        for kw in t1:
-            d.setdefault(kw, []).append(path)
-        for kw in t2:
-            d.setdefault(kw, []).append(path)
+        v = {m.group(0).lower() for m in VALVE_ONLY.finditer(p)}
+        e = {m.group(0).lower() for m in EP3.finditer(p)}
+        d = {m.group(0).lower() for m in DEV.finditer(p)}
+
+        for kw in v:
+            rec(depot, "v", kw, path)
+        for kw in e:
+            rec(depot, "e", kw, path)
+        for kw in d:
+            rec(depot, "d", kw, path)
 
         if GAME_EXT.search(p):
             game_ext[depot] = game_ext.get(depot, 0) + 1
@@ -96,20 +102,20 @@ def main() -> None:
         if mx and r["last_ver"] < mx:
             c = cut.setdefault(depot, {"total": 0, "interesting": []})
             c["total"] += 1
-            if t1 or t2:
+            if v or e or d:
                 c["interesting"].append(path)
 
     findings = []
     for depot, st in sorted(stats.items()):
         label = labels.get(depot, "")
         lab_low = label.lower()
+        valve_ctx = bool(VALVE_LABEL.search(lab_low))
+
         flags = []
         score = 0
-        evidence = {}
+        evidence = {"keywords": {}}
 
-        is_placeholder = label.strip().lower() in PLACEHOLDER or depot not in labels
-
-        if is_placeholder:
+        if label.strip().lower() in PLACEHOLDER or depot not in labels:
             flags.append("unlabeled")
             score += 10
 
@@ -126,10 +132,15 @@ def main() -> None:
             score += 8
 
         d = hits.get(depot, {})
-        for kw, paths in d.items():
-            is_t1 = TIER1.search(kw) is not None
-            score += 25 if is_t1 else 10
-            evidence.setdefault("keywords", {})[kw] = paths[:8]
+        for kw, paths in d.get("v", {}).items():
+            score += 25
+            evidence["keywords"][kw] = paths[:8]
+        for kw, paths in d.get("e", {}).items():
+            score += 25 if valve_ctx else 5
+            evidence["keywords"][kw] = paths[:8]
+        for kw, paths in d.get("d", {}).items():
+            score += 10
+            evidence["keywords"][kw] = paths[:8]
 
         if cut.get(depot, {}).get("interesting"):
             flags.append("cut_content")
@@ -164,12 +175,11 @@ def main() -> None:
         json.dump(findings, f, indent=2, ensure_ascii=False)
     print(f"wrote {out}  ({len(findings)} flagged depots)")
 
-    # Human summary
     print("\n=== TOP 60 FLAGGED DEPOTS ===")
     for f in findings[:60]:
-        ev = ", ".join(sorted(f["evidence"].get("keywords", {}).keys()))[:60]
+        ev = ", ".join(sorted(f["evidence"].get("keywords", {}).keys()))[:64]
         print(f"{f['depot']:>7}  score={f['score']:>3}  [{','.join(f['flags'])}]  "
-              f"v{f['max_version']}  {f['label'][:45]}"
+              f"v{f['max_version']}  {f['label'][:42]}"
               + (f"  KW:{ev}" if ev else ""))
 
     con.close()
