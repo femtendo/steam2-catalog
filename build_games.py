@@ -36,6 +36,44 @@ def slugify(name: str) -> str:
     return name or "unknown"
 
 
+# well-known games -> canonical short slug + Steam appid for icon art
+WELL_KNOWN = {
+    "team fortress 2": ("tf", 440),
+    "counter-strike source": ("css", 240),
+    "counter-strike": ("cs16", 10),
+    "counter-strike: condition zero": ("cz", 80),
+    "counter-strike: condition zero deleted scenes": ("czds", 100),
+    "half-life 2": ("hl2", 220),
+    "portal 2": ("p2", 620),
+    "portal": ("p1", 400),
+    "left 4 dead 2": ("l4d2", 550),
+    "left 4 dead": ("l4d1", 500),
+    "half-life": ("hl1", 70),
+    "day of defeat: source": ("dods", 300),
+    "half-life 2: deathmatch": ("hl2dm", 320),
+    "half-life 2: lost coast": ("hl2lc", 340),
+    "alien swarm": ("as", 630),
+    "counter-strike: global offensive": ("csgo", 730),
+    "dota 2": ("dota", 570),
+    "portal 2 authoring tools": ("p2at", 629),
+    "source filmmaker": ("sfm", 1840),
+    "deathmatch classic": ("dmc", 40),
+    "day of defeat": ("dod", 30),
+    "ricochet": ("ricochet", 60),
+    "half-life: opposing force": ("opfor", 50),
+    "half-life: blue shift": ("bshift", 130),
+    "team fortress classic": ("tfc", 20),
+}
+
+
+def canonical(name: str):
+    """Returns (canonical_slug, steam_appid) or (None, None)."""
+    key = re.sub(r"\s+", " ", name.strip().lower())
+    if key in WELL_KNOWN:
+        return WELL_KNOWN[key]
+    return (None, None)
+
+
 MAP_PATH = re.compile(r"(?:^|/)maps/[^/]+\.bsp$", re.IGNORECASE)
 NAV_PATH = re.compile(r"(?:^|/)maps/[^/]+\.(?:nav|res|lst)$", re.IGNORECASE)
 # broad net for anything that looks like a map dir: <anything>/maps/<name>.bsp
@@ -103,9 +141,12 @@ def main() -> None:
     for name, g in games.items():
         slug = slugify(name)
         game_maps = maps.get(name, {})
+        cslug, appid = canonical(name)
         games_out.append({
             "game": name,
             "slug": slug,
+            "icon": cslug or slug,
+            "appid": appid,
             "depots": sorted(g["depots"]),
             "versions": g["versions"],
             "dat_bytes": g["dat_bytes"],

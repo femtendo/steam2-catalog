@@ -53,13 +53,13 @@ $("#nav-about").onclick = () => show("about");
 let gamesData = [];
 
 // known icon slugs (Steam library art fetched at build time into img/games/)
-const GAME_ICONS = new Set(["tf","css","cs16","hl2","p2","p1","l4d2","l4d1","hl1","dods","hl2dm","as","csgo","dota","p3","dnf"]);
+const GAME_ICONS = new Set(["tf","css","cs16","cz","czds","hl2","p2","p1","l4d2","l4d1","hl1","dods","hl2dm","hl2lc","as","csgo","dota","p3","dnf","dod","opfor","bshift","tfc","dmc","ricochet","p2at","sfm"]);
 
 function gameTile(g) {
   const el = document.createElement("div");
   el.className = "tile";
-  const art = GAME_ICONS.has(g.slug)
-    ? `<img class="art" src="img/games/${g.slug}.jpg" alt="" loading="lazy">`
+  const art = GAME_ICONS.has(g.icon)
+    ? `<img class="art" src="img/games/${g.icon}.jpg" alt="" loading="lazy">`
     : `<div class="art placeholder" style="background:linear-gradient(135deg,#2c3644,#1a1f27)"><span>${esc(g.game.slice(0,2).toUpperCase())}</span></div>`;
   el.innerHTML =
     art +
