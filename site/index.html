@@ -15,9 +15,15 @@
 </div>
 <header>
   <div class="wrap">
-    <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
+    <div class="header-row">
+      <h1>Steam2 Archive <span class="dim">Catalog</span></h1>
+      <div id="verify-badge" class="verify-badge" title="versions with fully indexed file manifests / all versions in the archive">
+        <span class="pct">—%</span><span class="lbl">verified</span>
+      </div>
+    </div>
     <nav>
       <button id="nav-browse" class="active">Browse</button>
+      <button id="nav-games">Games</button>
       <button id="nav-uncharted">Uncharted</button>
       <button id="nav-discoveries">Discoveries</button>
       <button id="nav-bundles">Bundles</button>
@@ -109,6 +115,23 @@
     branch. This hub tracks the depots, the version timeline, cut content, and
     playable bundles.</p>
     <div id="tf2-content"><span class="dim">Loading…</span></div>
+  </section>
+
+  <section id="view-games" class="hidden">
+    <h2>Games <span class="dim">— every game in the archive, all depots grouped</span></h2>
+    <input id="game-search" type="text" placeholder="filter games..." style="display:none">
+    <table id="games">
+      <thead><tr>
+        <th>Game</th><th class="num">Depots</th><th class="num">Versions</th>
+        <th class="num">Maps</th><th class="num">Payload</th><th class="num">Span</th>
+      </tr></thead><tbody></tbody>
+    </table>
+    <div id="result-count-games" class="dim small"></div>
+  </section>
+
+  <section id="view-game" class="hidden">
+    <button id="back-games" class="back">← all games</button>
+    <div id="game-detail"></div>
   </section>
 
   <section id="view-depot" class="hidden">

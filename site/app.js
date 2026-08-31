@@ -33,20 +33,97 @@ const FLAG_LABELS = {
 
 // ---- views ----
 function show(id) {
-  ["browse", "uncharted", "discoveries", "bundles", "tf2", "community", "depot", "about"].forEach((v) =>
+  ["browse", "games", "game", "uncharted", "discoveries", "bundles", "tf2", "community", "depot", "about"].forEach((v) =>
     $("#view-" + v).classList.toggle("hidden", v !== id));
-  ["nav-browse", "nav-uncharted", "nav-discoveries", "nav-bundles", "nav-tf2", "nav-community", "nav-about"].forEach((n) =>
+  ["nav-browse", "nav-games", "nav-uncharted", "nav-discoveries", "nav-bundles", "nav-tf2", "nav-community", "nav-about"].forEach((n) =>
     $("#" + n).classList.toggle("active", n === "nav-" + id));
-  $("#searchbar").style.display = (id === "depot" || id === "about" || id === "community" || id === "tf2") ? "none" : "flex";
+  $("#searchbar").style.display = (["browse", "uncharted", "discoveries", "games"].includes(id)) ? "flex" : "none";
 }
 
 $("#nav-browse").onclick = () => { show("browse"); renderCatalog(); };
+$("#nav-games").onclick = () => { show("games"); renderGames(); };
 $("#nav-uncharted").onclick = () => { show("uncharted"); renderUncharted(); };
 $("#nav-discoveries").onclick = () => { show("discoveries"); renderDiscoveries(); };
 $("#nav-bundles").onclick = () => { show("bundles"); renderBundles(); };
 $("#nav-tf2").onclick = () => { show("tf2"); renderTF2(); };
 $("#nav-community").onclick = () => show("community");
 $("#nav-about").onclick = () => show("about");
+
+// ---- games ----
+let gamesData = [];
+
+async function renderGames() {
+  if (!gamesData.length) {
+    try { gamesData = await (await fetch("data/games.json")).json(); }
+    catch (e) { $("#games tbody").innerHTML = ""; $("#result-count-games").textContent = "games data not built yet"; return; }
+  }
+  const q = ($("#search").value || "").trim().toLowerCase();
+  const tbody = $("#games tbody");
+  tbody.innerHTML = "";
+  let shown = 0;
+  for (const g of gamesData) {
+    if (q && !g.game.toLowerCase().includes(q)) continue;
+    if (shown >= 500) break;
+    shown++;
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td class="name">${esc(g.game)}</td>` +
+      `<td class="num">${g.depots.length}</td>` +
+      `<td class="num">${g.versions.toLocaleString()}</td>` +
+      `<td class="num">${g.map_count || "—"}</td>` +
+      `<td class="num">${fmtBytes(g.dat_bytes)}</td>` +
+      `<td class="num">${fmtYear(g.first_date)}–${fmtYear(g.last_date)}</td>`;
+    tr.onclick = () => openGame(g.slug);
+    tbody.appendChild(tr);
+  }
+  $("#result-count-games").textContent =
+    `${shown.toLocaleString()} shown / ${gamesData.length.toLocaleString()} games`;
+}
+
+async function openGame(slug) {
+  show("game");
+  $("#game-detail").innerHTML = '<div class="dim">Loading…</div>';
+  const g = gamesData.find((x) => x.slug === slug);
+  let maps = [];
+  try {
+    const md = await (await fetch(`data/maps/${slug}.json`)).json();
+    maps = md.maps || [];
+  } catch (e) { /* no maps */ }
+
+  const depotRows = (g.depots || []).map((d) => {
+    const cd = catalog.find((x) => x.depot === d);
+    return `<tr data-depot="${d}">
+      <td class="num depot-id">${d}</td>
+      <td class="name">${esc(cd ? (cd.label || cd.manifest_roots.join(", ") || "(unnamed)") : "")}</td>
+      <td class="num">${cd ? cd.distinct_versions : "—"}</td>
+      <td class="num">${cd ? fmtBytes(cd.dat_bytes) : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  const mapRows = maps.filter((m) => m.type === "bsp").map((m) =>
+    `<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)} · depots ${m.depots.join(", ")}</span></div>`).join("");
+  const sideRows = maps.filter((m) => m.type !== "bsp").slice(0, 200).map((m) =>
+    `<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)}</span></div>`).join("");
+
+  $("#game-detail").innerHTML = `
+    <h2>${esc(g.game)}</h2>
+    <div class="sub">${g.depots.length} depot(s) · ${g.versions.toLocaleString()} versions ·
+      ${maps.filter((m) => m.type === "bsp").length} maps · ${fmtBytes(g.dat_bytes)} payload ·
+      ${fmtDate(g.first_date)} → ${fmtDate(g.last_date)}</div>
+    <div class="cols">
+      <div class="panel"><h3>Maps (${maps.filter((m) => m.type === "bsp").length})</h3>
+        <div class="pathlist">${mapRows || '<div class="dim small">no map files indexed</div>'}</div></div>
+      <div>
+        <div class="panel"><h3>Depots</h3><table><tbody>${depotRows}</tbody></table>
+          <div class="dim small">click a depot row for its full manifest</div>
+          ${sideRows ? `<h3 style="margin-top:12px">Sidecar files (nav/res/lst, sample)</h3><div class="pathlist">${sideRows}</div>` : ""}
+        </div>
+      </div>
+    </div>`;
+  $("#game-detail").querySelectorAll("tr[data-depot]").forEach((tr) =>
+    tr.addEventListener("click", () => openDepot(Number(tr.dataset.depot))));
+}
+$("#back-games").onclick = () => { show("games"); renderGames(); };
 
 // ---- tf2 hub ----
 async function renderTF2() {
@@ -401,6 +478,12 @@ window.addEventListener("hashchange", () => {
 
 // ---- boot ----
 (async () => {
+  try {
+    const v = await (await fetch("data/verify.json")).json();
+    $("#verify-badge .pct").textContent = v.pct.toFixed(1) + "%";
+    $("#verify-badge .lbl").textContent =
+      `${v.indexed_versions.toLocaleString()}/${v.total_versions.toLocaleString()} versions verified`;
+  } catch (e) { /* badge stays at —% */ }
   try {
     catalog = await (await fetch("data/catalog.json")).json();
     renderCatalog();

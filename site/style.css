@@ -31,6 +31,14 @@ body {
 }
 #safety-bar strong { color: #ffb36b; }
 
+.header-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.verify-badge {
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 14px; display: flex; align-items: baseline; gap: 8px;
+}
+.verify-badge .pct { font-size: 18px; font-weight: 700; color: var(--good); font-variant-numeric: tabular-nums; }
+.verify-badge .lbl { font-size: 11px; color: var(--dim); }
+
 header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 0; }
 header .wrap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 h1 { font-size: 18px; margin: 0; font-weight: 600; }
