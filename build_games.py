@@ -93,6 +93,12 @@ def main() -> None:
 
     # ---- emit games.json ----
     os.makedirs(os.path.join(DIST, "maps"), exist_ok=True)
+
+    # version->date per depot (for the game page timeline)
+    vdates = {}
+    for r in con.execute("SELECT depot, version, date FROM files WHERE kind='blob' ORDER BY depot, version"):
+        vdates.setdefault(r["depot"], []).append([r["version"], r["date"][:10]])
+
     games_out = []
     for name, g in games.items():
         slug = slugify(name)
@@ -106,6 +112,7 @@ def main() -> None:
             "map_count": len(game_maps),
             "first_date": g["first_date"],
             "last_date": g["last_date"],
+            "vdates": {str(d): vdates.get(d, []) for d in g["depots"]},
         })
         # per-game map file
         if game_maps:
@@ -127,8 +134,15 @@ def main() -> None:
                           f, separators=(",", ":"), ensure_ascii=False)
 
     games_out.sort(key=lambda g: -g["map_count"])
+    # vdates bloat: ship only for games with maps (the interactive pages)
+    slim = []
+    for g in games_out:
+        if g["map_count"]:
+            slim.append(g)
+        else:
+            slim.append({k: v for k, v in g.items() if k != "vdates"})
     with open(os.path.join(DIST, "games.json"), "w", encoding="utf-8") as f:
-        json.dump(games_out, f, separators=(",", ":"), ensure_ascii=False)
+        json.dump(slim, f, separators=(",", ":"), ensure_ascii=False)
 
     print(f"games: {len(games_out)}  with maps: {sum(1 for g in games_out if g['map_count'])}")
     for g in games_out[:8]:

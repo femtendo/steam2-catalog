@@ -99,6 +99,17 @@ async function openGame(slug) {
     maps = md.maps || [];
   } catch (e) { /* no maps */ }
 
+  const bsp = maps.filter((m) => m.type === "bsp");
+  const side = maps.filter((m) => m.type !== "bsp");
+
+  // timeline: build the union of version dates across the game's depots
+  const events = [];
+  for (const [depot, vd] of Object.entries(g.vdates || {})) {
+    for (const [v, date] of vd) events.push({ depot: Number(depot), v, date });
+  }
+  events.sort((a, b) => a.date < b.date ? -1 : 1);
+  const hasTimeline = events.length > 1;
+
   const depotRows = (g.depots || []).map((d) => {
     const cd = catalog.find((x) => x.depot === d);
     return `<tr data-depot="${d}">
@@ -109,28 +120,91 @@ async function openGame(slug) {
     </tr>`;
   }).join("");
 
-  const mapRows = maps.filter((m) => m.type === "bsp").map((m) =>
-    `<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)} · depots ${m.depots.join(", ")}</span></div>`).join("");
-  const sideRows = maps.filter((m) => m.type !== "bsp").slice(0, 200).map((m) =>
-    `<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)}</span></div>`).join("");
+  const mapRows = bsp.map((m) =>
+    `<div class="row maprow" data-f="${m.first_ver}" data-l="${m.last_ver}" data-depots="${m.depots.join(",")}">
+      <span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)}</span></div>`).join("");
 
   $("#game-detail").innerHTML = `
     <h2>${esc(g.game)}</h2>
     <div class="sub">${g.depots.length} depot(s) · ${g.versions.toLocaleString()} versions ·
-      ${maps.filter((m) => m.type === "bsp").length} maps · ${fmtBytes(g.dat_bytes)} payload ·
+      ${bsp.length} maps · ${fmtBytes(g.dat_bytes)} payload ·
       ${fmtDate(g.first_date)} → ${fmtDate(g.last_date)}</div>
+    ${hasTimeline ? `
+    <div class="panel" style="margin-bottom:14px">
+      <h3>Time travel <span class="dim small">— view the game's files as they existed on a date</span></h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="gdate" type="date" min="${fmtDate(events[0].date)}" max="${fmtDate(events[events.length-1].date)}" value="${fmtDate(events[events.length-1].date)}" style="background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px">
+        <button id="gsnap" class="btn">Snapshot</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <input type="checkbox" id="gcut" checked> show only files missing from the final version (cut)
+        </label>
+        <span id="gsnap-info" class="dim small"></span>
+      </div>
+      <div id="gsnap-result" class="pathlist" style="max-height:340px;margin-top:8px"></div>
+    </div>` : ""}
     <div class="cols">
-      <div class="panel"><h3>Maps (${maps.filter((m) => m.type === "bsp").length})</h3>
-        <div class="pathlist">${mapRows || '<div class="dim small">no map files indexed</div>'}</div></div>
+      <div class="panel"><h3>Maps (${bsp.length})</h3>
+        <div class="pathlist" id="gamemaps">${mapRows || '<div class="dim small">no map files indexed</div>'}</div></div>
       <div>
         <div class="panel"><h3>Depots</h3><table><tbody>${depotRows}</tbody></table>
-          <div class="dim small">click a depot row for its full manifest</div>
-          ${sideRows ? `<h3 style="margin-top:12px">Sidecar files (nav/res/lst, sample)</h3><div class="pathlist">${sideRows}</div>` : ""}
+          <div class="dim small">click a depot row for its full manifest + per-version browser</div>
+          ${side.length ? `<h3 style="margin-top:12px">Sidecar files (nav/res/lst)</h3><div class="pathlist">${side.slice(0, 200).map((m) =>
+            `<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)}</span></div>`).join("")}</div>` : ""}
         </div>
       </div>
     </div>`;
+
   $("#game-detail").querySelectorAll("tr[data-depot]").forEach((tr) =>
     tr.addEventListener("click", () => openDepot(Number(tr.dataset.depot))));
+
+  // time-travel: given a date, per depot find the version current at that date,
+  // then check which maps existed (map first_ver/last_ver vs depot version at date)
+  const snapBtn = $("#gsnap");
+  if (snapBtn) {
+    snapBtn.onclick = async () => {
+      const date = $("#gdate").value;
+      const onlyCut = $("#gcut").checked;
+      const info = $("#gsnap-info");
+      const result = $("#gsnap-result");
+      info.textContent = "loading version manifests…";
+      result.innerHTML = "";
+
+      // per depot: version current at date (last version whose date <= chosen)
+      const depotAt = {};
+      for (const [depot, vd] of Object.entries(g.vdates || {})) {
+        let best = null;
+        for (const [v, d] of vd) if (d <= date) best = Number(v);
+        depotAt[Number(depot)] = best;
+      }
+      const active = Object.entries(depotAt).filter(([, v]) => v !== null);
+      info.textContent = `${active.length} depot(s) active on ${date}: ` +
+        active.map(([d, v]) => `${d}@v${v}`).join(", ");
+
+      // fetch vfiles for the active depots (the main ones) and intersect with maps
+      const rows = [];
+      for (const m of bsp) {
+        const existedOnDate = m.depots.some((dep) => {
+          const v = depotAt[dep];
+          return v !== null && v !== undefined && m.first_ver <= v;
+        });
+        const cutLater = m.last_ver < (function(){
+          // final version of the last depot that had this map
+          let mx = 0;
+          for (const dep of m.depots) {
+            const vd = (g.vdates || {})[String(dep)];
+            if (vd && vd.length) mx = Math.max(mx, vd[vd.length - 1][0]);
+          }
+          return mx;
+        })();
+        if (onlyCut && !existedOnDate) continue;
+        if (onlyCut && existedOnDate && !cutLater) continue;
+        rows.push(`<div class="row"><span>${esc(m.path)}</span><span class="sz">${fmtBytes(m.size)} · depots ${m.depots.join(",")} · v${m.first_ver}–v${m.last_ver}</span></div>`);
+      }
+      result.innerHTML = rows.slice(0, 500).join("") ||
+        '<div class="dim small">nothing matched — try unchecking "cut only"</div>';
+      if (rows.length > 500) result.innerHTML += `<div class="dim small">+ ${rows.length - 500} more</div>`;
+    };
+  }
 }
 $("#back-games").onclick = () => { show("games"); renderGames(); };
 
