@@ -44,3 +44,9 @@ config.local.*
 
 # --- local agent/planning state (never publish) ---
 .hermes/
+
+# --- local security tooling ---
+leak_check.py
+
+# --- local security tooling (never publish) ---
+leak_check.py
