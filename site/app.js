@@ -52,29 +52,38 @@ $("#nav-about").onclick = () => show("about");
 // ---- games ----
 let gamesData = [];
 
+// known icon slugs (Steam library art fetched at build time into img/games/)
+const GAME_ICONS = new Set(["tf","css","cs16","hl2","p2","p1","l4d2","l4d1","hl1","dods","hl2dm","as","csgo","dota","p3","dnf"]);
+
+function gameTile(g) {
+  const el = document.createElement("div");
+  el.className = "tile";
+  const art = GAME_ICONS.has(g.slug)
+    ? `<img class="art" src="img/games/${g.slug}.jpg" alt="" loading="lazy">`
+    : `<div class="art placeholder" style="background:linear-gradient(135deg,#2c3644,#1a1f27)"><span>${esc(g.game.slice(0,2).toUpperCase())}</span></div>`;
+  el.innerHTML =
+    art +
+    `<div class="tname">${esc(g.game)}</div>` +
+    `<div class="tmeta">${g.map_count || 0} maps · ${g.depots.length} depots</div>` +
+    `<div class="tmeta2">${g.versions.toLocaleString()} versions · ${fmtBytes(g.dat_bytes)}</div>`;
+  el.onclick = () => openGame(g.slug);
+  return el;
+}
+
 async function renderGames() {
   if (!gamesData.length) {
     try { gamesData = await (await fetch("data/games.json")).json(); }
-    catch (e) { $("#games tbody").innerHTML = ""; $("#result-count-games").textContent = "games data not built yet"; return; }
+    catch (e) { $("#result-count-games").textContent = "games data not built yet"; return; }
   }
   const q = ($("#search").value || "").trim().toLowerCase();
-  const tbody = $("#games tbody");
-  tbody.innerHTML = "";
+  const grid = $("#games-grid");
+  grid.innerHTML = "";
   let shown = 0;
   for (const g of gamesData) {
     if (q && !g.game.toLowerCase().includes(q)) continue;
-    if (shown >= 500) break;
+    if (shown >= 300) break;
     shown++;
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      `<td class="name">${esc(g.game)}</td>` +
-      `<td class="num">${g.depots.length}</td>` +
-      `<td class="num">${g.versions.toLocaleString()}</td>` +
-      `<td class="num">${g.map_count || "—"}</td>` +
-      `<td class="num">${fmtBytes(g.dat_bytes)}</td>` +
-      `<td class="num">${fmtYear(g.first_date)}–${fmtYear(g.last_date)}</td>`;
-    tr.onclick = () => openGame(g.slug);
-    tbody.appendChild(tr);
+    grid.appendChild(gameTile(g));
   }
   $("#result-count-games").textContent =
     `${shown.toLocaleString()} shown / ${gamesData.length.toLocaleString()} games`;
