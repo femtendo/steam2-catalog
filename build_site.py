@@ -62,9 +62,25 @@ def main() -> None:
     path_counts = {r["depot"]: r["n"] for r in con.execute(
         "SELECT depot, COUNT(*) n FROM depot_paths GROUP BY depot")}
 
+    # discovery flags per depot (from the latest findings pass)
+    flags = {}
+    fpath = os.path.join(BASE, "index", "findings.json")
+    if os.path.exists(fpath):
+        try:
+            with open(fpath, encoding="utf-8") as f:
+                for fd in json.load(f):
+                    flags[fd["depot"]] = {
+                        "score": fd.get("score", 0),
+                        "flags": fd.get("flags", []),
+                        "keywords": sorted((fd.get("evidence", {}).get("keywords") or {}).keys()),
+                    }
+        except Exception:
+            pass
+
     # ---- catalog.json ----
     catalog = []
     for depot, st in stats.items():
+        fl = flags.get(depot)
         catalog.append({
             "depot": depot,
             "label": labels.get(depot, ""),
@@ -78,6 +94,9 @@ def main() -> None:
             "blob_bytes": st["blob_bytes"],
             "dat_bytes": st["dat_bytes"],
             "path_count": path_counts.get(depot, 0),
+            "flags": fl["flags"] if fl else [],
+            "flag_score": fl["score"] if fl else 0,
+            "flag_keywords": fl["keywords"] if fl else [],
         })
     catalog.sort(key=lambda d: d["depot"])
 
@@ -87,16 +106,24 @@ def main() -> None:
     # ---- per-depot detail files ----
     cur_depot = None
     cur_paths = None
+    cur_cut = []
+    max_ver = None
     for r in con.execute("SELECT depot,path,size,first_ver,last_ver FROM depot_paths ORDER BY depot,path"):
         if r["depot"] != cur_depot:
             if cur_depot is not None:
-                _write_depot(depot_dir, cur_depot, cur_paths, versions_of(con, cur_depot), files_of(con, cur_depot))
+                _write_depot(depot_dir, cur_depot, cur_paths,
+                             versions_of(con, cur_depot), files_of(con, cur_depot), cur_cut)
             cur_depot = r["depot"]
             cur_paths = []
+            cur_cut = []
+            max_ver = stats.get(cur_depot, {}).get("max_version") or 0
         cur_paths.append({"p": r["path"], "s": r["size"],
                           "f": r["first_ver"], "l": r["last_ver"]})
+        if max_ver and r["last_ver"] < max_ver:
+            cur_cut.append({"p": r["path"], "f": r["first_ver"], "l": r["last_ver"]})
     if cur_depot is not None:
-        _write_depot(depot_dir, cur_depot, cur_paths, versions_of(con, cur_depot), files_of(con, cur_depot))
+        _write_depot(depot_dir, cur_depot, cur_paths,
+                     versions_of(con, cur_depot), files_of(con, cur_depot), cur_cut)
 
     # ---- findings ----
     src = os.path.join(BASE, "index", "findings.json")
@@ -137,9 +164,10 @@ def files_of(con, depot):
     return out
 
 
-def _write_depot(depot_dir, depot, paths, versions, files):
+def _write_depot(depot_dir, depot, paths, versions, files, cut):
     with open(os.path.join(depot_dir, f"{depot}.json"), "w", encoding="utf-8") as f:
-        json.dump({"depot": depot, "versions": versions, "paths": paths, "files": files},
+        json.dump({"depot": depot, "versions": versions, "paths": paths,
+                   "files": files, "cut": cut},
                   f, separators=(",", ":"), ensure_ascii=False)
 
 

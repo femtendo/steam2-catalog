@@ -55,7 +55,9 @@ nav button.active { color: var(--text); background: var(--panel2); border-color:
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
-th { color: var(--dim); font-weight: 500; font-size: 12px; position: sticky; top: 0; background: var(--bg); }
+th { color: var(--dim); font-weight: 500; font-size: 12px; position: sticky; top: 0; background: var(--bg); cursor: pointer; user-select: none; }
+th.sorted::after { content: " ▾"; color: var(--accent); }
+th { white-space: nowrap; }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: var(--panel2); }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -78,6 +80,13 @@ td.name { color: var(--text); }
   border: 1px solid var(--border); color: var(--dim); white-space: nowrap;
 }
 .badge.hot { color: var(--accent2); border-color: var(--accent2); }
+td .badge { margin-left: 8px; }
+.flagrow { margin: 6px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.linkrow { margin: 8px 0 14px; display: flex; gap: 16px; }
+.linkrow a { color: var(--accent); text-decoration: none; font-size: 13px; }
+.linkrow a:hover { text-decoration: underline; }
+.cut-panel { border-color: var(--accent2); margin-top: 16px; }
+.cut-panel h3 { color: var(--accent2); }
 .card .meta { color: var(--dim); font-size: 12px; margin-top: 4px; }
 .card .ev { margin-top: 8px; }
 .card .ev .kw { color: var(--accent2); font-size: 12px; }
