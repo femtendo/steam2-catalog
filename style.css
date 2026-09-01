@@ -138,3 +138,15 @@ viewer-model, model-viewer { display: block; }
 .dl a:hover { text-decoration: underline; }
 .back { background: var(--panel); color: var(--text); border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-bottom: 10px; }
 footer { padding: 20px; margin-top: 40px; border-top: 1px solid var(--border); color: var(--dim); }
+
+/* previews (3D objects / map layouts / audio) */
+.preview-tabs { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.ptab { background: var(--panel2); color: var(--text); border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.ptab.on { background: var(--accent); color: #0d1015; border-color: var(--accent); font-weight: 600; }
+.mapgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.mapcard { margin: 0; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.mapcard img { width: 100%; display: block; aspect-ratio: 1; object-fit: contain; background: #0d1015; }
+.mapcard figcaption { padding: 6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--dim); }
+.audio-row { cursor: pointer; }
+.audio-row:hover { background: var(--panel2); }
+.audio-row.playing { color: var(--accent); }

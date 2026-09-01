@@ -439,6 +439,7 @@ async function openDepot(id) {
         <div class="dim small">${cur ? "loading version manifest…" : "no manifest data"}</div>
       </div>
     </div>
+    <div id="preview-slot"></div>
     <div class="cols">
       <div class="panel"><h3>File manifest (${paths.length.toLocaleString()})</h3>
         <input id="pf" type="text" placeholder="filter ${paths.length.toLocaleString()} paths...">
@@ -468,6 +469,121 @@ async function openDepot(id) {
   }
   loadViewer(id);
   wireVersionBrowser(id, versions);
+  loadPreviews(id);
+}
+
+// ---- depot previews: 3D models, map previews, audio ----
+const previewCache = {};
+
+async function loadPreviews(depot) {
+  const slot = $("#preview-slot");
+  if (!slot) return;
+  let p = previewCache[depot];
+  if (p === undefined) {
+    try { p = await (await fetch(`data/previews/${depot}.json`)).json(); }
+    catch (e) { p = null; }
+    previewCache[depot] = p;
+  }
+  if (!p || (!p.models.length && !p.maps.length && !p.audio.length)) {
+    slot.innerHTML = "";
+    return;
+  }
+  const note = p.note ? `<div class="dim small" style="margin-top:6px">${esc(p.note)}</div>` : "";
+
+  slot.innerHTML = `
+    <div class="panel" style="margin-bottom:14px" id="preview-panel">
+      <h3>Previews <span class="dim small">— rendered from the archive's original files, not screenshots</span></h3>
+      ${note}
+      ${(p.models.length || p.maps.length) ? `
+      <div class="preview-tabs">
+        ${p.models.length ? `<button class="ptab on" data-t="models">3D objects (${p.models.length})</button>` : ""}
+        ${p.maps.length ? `<button class="ptab ${p.models.length ? "" : "on"}" data-t="maps">Map layouts (${p.maps.length})</button>` : ""}
+      </div>
+      <div id="pv-models" class="pv-body ${p.models.length ? "" : "hidden"}">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <select id="model-pick" style="flex:0 0 auto;max-width:340px">
+            ${p.models.map((f) => `<option value="${esc(f.file)}">${esc(f.label)}</option>`).join("")}
+          </select>
+          <label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="mv-spin" checked> spin</label>
+        </div>
+        <model-viewer id="mv" camera-controls shadow-intensity="1" exposure="1"
+          style="width:100%;height:420px;background:#0d1015;border-radius:6px"></model-viewer>
+        <div class="meta small dim" id="mv-src"></div>
+      </div>
+      <div id="pv-maps" class="pv-body ${p.models.length ? "hidden" : ""}">
+        <div class="mapgrid">
+          ${p.maps.map((m) => `
+            <figure class="mapcard">
+              <img loading="lazy" src="data/previews/maps/${esc(m.file)}" alt="${esc(m.label)} layout">
+              <figcaption>${esc(m.label)}</figcaption>
+            </figure>`).join("")}
+        </div>
+        <div class="meta small dim">top-down layout extracted from the compiled BSP — rotated per map</div>
+      </div>` : ""}
+      ${p.audio.length ? `
+      <div style="margin-top:14px">
+        <h3 style="margin:0 0 8px">Sound <span class="dim small">(${p.audio.length} clips — click to play in place)</span></h3>
+        <input id="audio-filter" type="text" placeholder="filter sounds..." style="margin-bottom:8px">
+        <div class="pathlist" id="audio-list" style="max-height:300px">
+          ${p.audio.map((a) => `
+            <div class="row audio-row" data-src="data/previews/audio/${esc(a.file)}" data-label="${esc(a.label)}">
+              <span>▶ ${esc(a.label)}</span><span class="sz">${esc(a.src)}</span>
+            </div>`).join("")}
+        </div>
+      </div>` : ""}
+    </div>`;
+
+  // tabs
+  slot.querySelectorAll(".ptab").forEach((b) => {
+    b.addEventListener("click", () => {
+      slot.querySelectorAll(".ptab").forEach((x) => x.classList.toggle("on", x === b));
+      slot.querySelectorAll(".pv-body").forEach((x) =>
+        x.classList.toggle("hidden", x.id !== "pv-" + b.dataset.t));
+    });
+  });
+
+  // 3D model viewer
+  const mv = $("#mv");
+  const pick = $("#model-pick");
+  if (mv && pick) {
+    const spin = $("#mv-spin");
+    const setModel = () => {
+      const f = p.models.find((x) => x.file === pick.value) || p.models[0];
+      mv.setAttribute("auto-rotate", spin.checked ? "" : "false");
+      mv.src = `data/previews/models/${f.file}`;
+      $("#mv-src").textContent = "source: " + f.src;
+    };
+    pick.addEventListener("change", setModel);
+    spin.addEventListener("change", setModel);
+    setModel();
+  }
+
+  // audio: one shared player, click a row to play
+  if (p.audio.length) {
+    let current = null;
+    const audio = new Audio();
+    const rows = () => slot.querySelectorAll(".audio-row");
+    slot.querySelectorAll(".audio-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const src = row.dataset.src;
+        if (current === src && !audio.paused) { audio.pause(); row.firstChild.textContent = "▶ " + row.dataset.label; return; }
+        slot.querySelectorAll(".audio-row").forEach((r) => { r.firstChild.textContent = "▶ " + r.dataset.label; });
+        audio.src = src; audio.play();
+        current = src;
+        row.firstChild.textContent = "❚❚ " + row.dataset.label;
+      });
+    });
+    audio.addEventListener("ended", () => {
+      slot.querySelectorAll(".audio-row").forEach((r) => { r.firstChild.textContent = "▶ " + r.dataset.label; });
+      current = null;
+    });
+    const af = $("#audio-filter");
+    af.addEventListener("input", () => {
+      const q = af.value.toLowerCase();
+      rows().forEach((r) =>
+        r.style.display = r.dataset.label.toLowerCase().includes(q) ? "" : "none");
+    });
+  }
 }
 
 // wire the per-version file browser on a depot page
