@@ -50,3 +50,4 @@ leak_check.py
 
 # --- local security tooling (never publish) ---
 leak_check.py
+thirdparty/
