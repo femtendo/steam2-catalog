@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import sqlite3
+import build_vfiles
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(BASE, "index", "steam2.db")
@@ -104,26 +105,19 @@ def main() -> None:
         json.dump(catalog, f, separators=(",", ":"), ensure_ascii=False)
 
     # ---- per-depot detail files ----
-    cur_depot = None
-    cur_paths = None
-    cur_cut = []
-    max_ver = None
-    for r in con.execute("SELECT depot,path,size,first_ver,last_ver FROM depot_paths ORDER BY depot,path"):
-        if r["depot"] != cur_depot:
-            if cur_depot is not None:
-                _write_depot(depot_dir, cur_depot, cur_paths,
-                             versions_of(con, cur_depot), files_of(con, cur_depot), cur_cut)
-            cur_depot = r["depot"]
-            cur_paths = []
-            cur_cut = []
-            max_ver = stats.get(cur_depot, {}).get("max_version") or 0
-        cur_paths.append({"p": r["path"], "s": r["size"],
+    for depot in sorted(set(stats) | set(build_vfiles._depot_ids(con)) | set(path_counts)):
+        paths, cut = [], []
+        max_ver = stats.get(depot, {}).get("max_version") or 0
+        for r in con.execute("SELECT path,size,first_ver,last_ver FROM depot_paths "
+                             "WHERE depot=? ORDER BY path", (depot,)):
+            paths.append({"p": r["path"], "s": r["size"],
                           "f": r["first_ver"], "l": r["last_ver"]})
-        if max_ver and r["last_ver"] < max_ver:
-            cur_cut.append({"p": r["path"], "f": r["first_ver"], "l": r["last_ver"]})
-    if cur_depot is not None:
-        _write_depot(depot_dir, cur_depot, cur_paths,
-                     versions_of(con, cur_depot), files_of(con, cur_depot), cur_cut)
+            if max_ver and r["last_ver"] < max_ver:
+                cut.append({"p": r["path"], "f": r["first_ver"], "l": r["last_ver"]})
+        context = build_vfiles._version_context(con, depot)
+        _write_depot(depot_dir, depot, paths, versions_of(con, depot, context),
+                     files_of(con, depot), cut,
+                     build_vfiles.revision_id(context[0], context[1]))
 
     # ---- findings ----
     src = os.path.join(BASE, "index", "findings.json")
@@ -142,14 +136,34 @@ def main() -> None:
     con.close()
 
 
-def versions_of(con, depot):
+def versions_of(con, depot, context=None):
     rows = con.execute(
         "SELECT version, app_id, ver_id, node_count, file_count, roots "
         "FROM versions WHERE depot=? ORDER BY version", (depot,)).fetchall()
-    return [{"v": r["version"], "app": r["app_id"], "ver": r["ver_id"],
-             "nodes": r["node_count"], "files": r["file_count"],
-             "roots": r["roots"].split("\x1f") if r["roots"] else []}
-            for r in rows]
+    by_version = {r["version"]: {
+        "v": r["version"], "app": r["app_id"], "ver": r["ver_id"],
+        "nodes": r["node_count"], "files": r["file_count"],
+        "roots": r["roots"].split("\x1f") if r["roots"] else [],
+    } for r in rows}
+
+    known_versions, metadata, _, _ = context or build_vfiles._version_context(con, depot)
+    for version in known_versions:
+        summary = by_version.setdefault(version, {
+            "v": version, "app": None, "ver": None, "nodes": None,
+            "files": None, "roots": [],
+        })
+        meta = metadata[str(version)]
+        exact = meta["state"] == "valid"
+        if exact:
+            summary.update(app=depot, ver=meta["manifest_ver_id"],
+                           nodes=meta["header_node_count"], files=meta["header_file_count"])
+        has_legacy_summary = any(summary[key] is not None
+                                 for key in ("app", "ver", "nodes", "files"))
+        summary["manifest_state"] = (
+            "exact" if exact else
+            "legacy" if has_legacy_summary else "unknown")
+        summary["source_state"] = meta["state"]
+    return [by_version[version] for version in sorted(by_version)]
 
 
 def files_of(con, depot):
@@ -165,10 +179,12 @@ def files_of(con, depot):
     return out
 
 
-def _write_depot(depot_dir, depot, paths, versions, files, cut):
+def _write_depot(depot_dir, depot, paths, versions, files, cut, revision):
     with open(os.path.join(depot_dir, f"{depot}.json"), "w", encoding="utf-8") as f:
         json.dump({"depot": depot, "versions": versions, "paths": paths,
-                   "files": files, "cut": cut},
+                   "files": files, "cut": cut,
+                   "path_summary_semantics": "legacy_union_max_size",
+                   "vfiles_revision": revision},
                   f, separators=(",", ":"), ensure_ascii=False)
 
 

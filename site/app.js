@@ -6,13 +6,44 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 
 let catalog = [];
 let findings = [];
+let depotOpenGeneration = 0;
 
 function fmtBytes(n) {
-  if (n == null || n <= 0) return "—";
-  const u = ["B", "KiB", "MiB", "GiB", "TiB"];
-  let v = n, i = 0;
-  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return v.toFixed(v >= 100 ? 0 : 1) + " " + u[i];
+  if (n == null) return "—";
+  if (n === 0 || n === "0") return "0 B";
+  const u = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+  if (typeof n === "string") {
+    if (!/^\d+$/.test(n)) return "?";
+    let bytes;
+    try { bytes = BigInt(n); } catch (e) { return "?"; }
+    if (bytes <= 0n) return "—";
+    let divisor = 1n, i = 0;
+    while (bytes >= divisor * 1024n && i < u.length - 1) { divisor *= 1024n; i++; }
+    const tenths = (bytes * 10n + divisor / 2n) / divisor;
+    return tenths / 10n >= 100n
+      ? `${tenths / 10n} ${u[i]}`
+      : `${tenths / 10n}.${tenths % 10n} ${u[i]}`;
+  }
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  let value = Number(n);
+  let i = 0;
+  while (value >= 1024 && i < u.length - 1) { value /= 1024; i++; }
+  return value.toFixed(value >= 100 ? 0 : 1) + " " + u[i];
+}
+
+function isValidFileRow(row) {
+  if (!Array.isArray(row) || typeof row[0] !== "string") return false;
+  if (typeof row[1] === "number") return Number.isSafeInteger(row[1]) && row[1] >= 0;
+  if (typeof row[1] !== "string" || !/^\d+$/.test(row[1])) return false;
+  try { return BigInt(row[1]) <= 0x7FFFFFFFFFFFFFFFn; } catch (e) { return false; }
+}
+function versionFileLabel(v) {
+  const count = v.files ?? "?";
+  if (v.manifest_state === "exact") return `${count} files · exact source`;
+  if (v.manifest_state === "unknown") return "? files · unknown";
+  // Depot JSON from pre-v2 builds lacks a trust field; preserve its count but
+  // disclose that it is a legacy projection with no per-manifest verification.
+  return `${count} files · legacy/inferred`;
 }
 function fmtDate(s) {
   if (!s) return "—";
@@ -365,17 +396,20 @@ document.addEventListener("keydown", (e) => {
 const DL_NOTE = "You need the complete delta chain (all versions up to the one you want) to extract. Easiest: use <a href=\"https://github.com/extremebleem/steam2_downloader\" target=\"_blank\" rel=\"noopener\">steam2_downloader</a>, which resolves chains automatically.";
 
 async function openDepot(id) {
+  const openGeneration = ++depotOpenGeneration;
   show("depot");
   $("#depot").innerHTML = '<div class="dim">Loading…</div>';
   history.replaceState(null, "", "#depot-" + id);
 
   let detail;
   try {
-    detail = await (await fetch(`data/depots/${id}.json`)).json();
+    detail = await (await fetch(`data/depots/${id}.json`, { cache: "no-cache" })).json();
   } catch (e) {
+    if (openGeneration !== depotOpenGeneration) return;
     $("#depot").innerHTML = `<div class="dim">Depot ${id} has no indexed manifest yet.</div>`;
     return;
   }
+  if (openGeneration !== depotOpenGeneration) return;
   const d = catalog.find((x) => x.depot === id) || {};
   const label = d.label || (d.manifest_roots || []).join(", ") || "(unnamed)";
   const paths = detail.paths || [];
@@ -415,7 +449,8 @@ async function openDepot(id) {
   const cur = versions.length ? versions[versions.length - 1] : null;
   $("#depot").innerHTML = `
     <h2><span class="depot-id">${id}</span> ${esc(label)}</h2>
-    <div class="sub">${versions.length} version(s) · ${paths.length.toLocaleString()} distinct file paths ·
+    <div class="sub">${versions.length} version(s) · ${paths.length.toLocaleString()} union paths ·
+      union sizes are maximum observed; exact sizes appear in validated version lists ·
       ${fmtBytes(d.dat_bytes)} payload · ${fmtBytes(d.blob_bytes)} metadata</div>
     ${(d.flags || []).length ? `<div class="flagrow">${badges(d)}
       ${d.flag_score ? `<span class="badge">interest score ${d.flag_score}</span>` : ""}</div>` : ""}
@@ -430,7 +465,7 @@ async function openDepot(id) {
       <h3>File browser by version</h3>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="vsel" style="flex:0 0 auto">
-          ${versions.map((v) => `<option value="${v.v}">v${v.v} — ${v.files ?? "?"} files</option>`).join("")}
+          ${versions.map((v) => `<option value="${v.v}">v${v.v} — ${esc(versionFileLabel(v))}</option>`).join("")}
         </select>
         <input id="vf-filter" type="text" placeholder="filter paths in this version..." style="flex:1;min-width:200px">
         <span id="vstat" class="dim small"></span>
@@ -438,6 +473,7 @@ async function openDepot(id) {
       <div class="pathlist" id="vflist" style="max-height:360px;margin-top:8px">
         <div class="dim small">${cur ? "loading version manifest…" : "no manifest data"}</div>
       </div>
+      <div id="vpage-controls" style="display:flex;gap:8px;align-items:center;margin-top:8px"></div>
     </div>
     <div id="preview-slot"></div>
     <div class="cols">
@@ -448,7 +484,7 @@ async function openDepot(id) {
       <div>
         <div class="panel"><h3>Version history</h3><div class="pathlist">
           ${versions.map((v) =>
-            `<div class="row"><span>v${v.v}</span><span class="sz">${v.files ?? "—"} files · ${(v.roots || []).slice(0, 2).join(", ")}</span></div>`).join("") ||
+            `<div class="row"><span>v${v.v}</span><span class="sz">${esc(versionFileLabel(v))} · ${(v.roots || []).slice(0, 2).map(esc).join(", ")}</span></div>`).join("") ||
             '<div class="dim small">no manifest data</div>'}
         </div></div>
         ${dlHtml}
@@ -468,7 +504,7 @@ async function openDepot(id) {
     });
   }
   loadViewer(id);
-  wireVersionBrowser(id, versions);
+  wireVersionBrowser(id, versions, openGeneration, detail.vfiles_revision);
   loadPreviews(id);
 }
 
@@ -587,38 +623,139 @@ async function loadPreviews(depot) {
 }
 
 // wire the per-version file browser on a depot page
-async function wireVersionBrowser(depot, versions) {
+async function wireVersionBrowser(depot, versions, openGeneration, expectedRevision) {
   const sel = $("#vsel");
   if (!sel || !versions.length) return;
-  const data = await loadVFiles(depot);
+  const data = await loadVFiles(depot, expectedRevision);
+  if (openGeneration !== depotOpenGeneration || !sel.isConnected) return;
   const list = $("#vflist");
   const stat = $("#vstat");
   if (!data) {
     if (list) list.innerHTML = '<div class="dim small">version-level manifest not available for this depot — use the union manifest below</div>';
     return;
   }
-  const apply = () => {
+  if (data.schema_version !== 2) {
+    if (list) list.innerHTML = '<div class="dim small">Exact per-version records are unavailable in this older data format.</div>';
+    if (stat) stat.textContent = "historical list not validated";
+    return;
+  }
+  if (!/^[0-9a-f]{64}$/.test(expectedRevision || "") || data.depot !== depot ||
+      data.data_revision !== expectedRevision) {
+    if (list) list.innerHTML = '<div class="dim small">Exact records are unknown: this file list does not match the current depot snapshot.</div>';
+    if (stat) stat.textContent = "historical list not validated";
+    return;
+  }
+  const controls = $("#vpage-controls");
+  let applyGeneration = 0;
+  const apply = async () => {
+    const requestGeneration = ++applyGeneration;
     const v = sel.value;
-    const files = (data.files || {})[v] || [];
     const q = ($("#vf-filter")?.value || "").toLowerCase();
-    const shown = q ? files.filter((f) => f[0].toLowerCase().includes(q)) : files;
-    if (list) list.innerHTML = renderVersionFiles(v, { [v]: shown });
-    if (stat) stat.textContent = `${shown.length.toLocaleString()} files in v${v}`;
+    const meta = (data.version_status || {})[v];
+    if (!meta || meta.state !== "valid") {
+      if (list) list.innerHTML = `<div class="dim small">Exact file list unknown for v${esc(v)}: ${esc(meta?.state || "status missing")}. ${esc(meta?.validation_detail || "The source manifest is unavailable or did not pass validation.")}</div>`;
+      if (stat) {
+        const header = meta?.header_file_count;
+        const parsed = meta?.parsed_file_count;
+        stat.textContent = `header ${header ?? "?"} · parsed ${parsed ?? "?"}`;
+      }
+      if (controls) controls.innerHTML = "";
+      return;
+    }
+
+    let files;
+    const count = meta.header_file_count;
+    if (!Number.isSafeInteger(count) || count < 0 || meta.parsed_file_count !== count) {
+      if (list) list.innerHTML = '<div class="dim small">Exact file list failed count validation.</div>';
+      if (stat) stat.textContent = "records unavailable";
+      if (controls) controls.innerHTML = "";
+      return;
+    }
+    if (data.paged) {
+      const pageCount = (data.version_pages || {})[v];
+      if (!Number.isSafeInteger(data.page_rows) || data.page_rows < 1 ||
+          !Number.isSafeInteger(pageCount) || pageCount < 0 ||
+          pageCount !== Math.ceil(count / data.page_rows)) {
+        if (list) list.innerHTML = '<div class="dim small">Exact file-list pagination failed count validation.</div>';
+        if (stat) stat.textContent = "pages unavailable";
+        if (controls) controls.innerHTML = "";
+        return;
+      }
+      if (pageCount === 0) {
+        files = [];
+        if (controls) controls.innerHTML = "";
+      } else {
+        const pageSel = Number(controls?.dataset.page || 0);
+        const page = Math.min(Math.max(pageSel, 0), pageCount - 1);
+        if (list) list.innerHTML = '<div class="dim small">loading page…</div>';
+        try {
+          const pageData = await fetchJSONgz(`data/vfiles/${depot}.${v}.${page}.json.gz?schema=2&revision=${expectedRevision}`);
+          if (pageData.schema_version !== 2 || pageData.depot !== depot ||
+              pageData.version !== Number(v) || pageData.page !== page ||
+              pageData.data_revision !== expectedRevision) throw new Error("page identity mismatch");
+          if (requestGeneration !== applyGeneration ||
+              openGeneration !== depotOpenGeneration || !sel.isConnected || sel.value !== v) return;
+          if (!Array.isArray(pageData.rows) || !pageData.rows.every(isValidFileRow) ||
+              pageData.rows.length !== Math.min(data.page_rows, count - page * data.page_rows)) {
+            throw new Error("page rows are malformed");
+          }
+          files = pageData.rows || [];
+        } catch (e) {
+          if (requestGeneration !== applyGeneration ||
+              openGeneration !== depotOpenGeneration || !sel.isConnected || sel.value !== v) return;
+          if (list) list.innerHTML = '<div class="dim small">This exact file-list page is missing or failed validation.</div>';
+          if (stat) stat.textContent = "page unavailable";
+          if (controls) controls.innerHTML = "";
+          return;
+        }
+        if (controls) {
+          controls.dataset.page = String(page);
+          controls.innerHTML = `<button id="vpage-prev" ${page === 0 ? "disabled" : ""}>Previous page</button><span class="dim small">Page ${page + 1} of ${pageCount}</span><button id="vpage-next" ${page + 1 >= pageCount ? "disabled" : ""}>Next page</button>`;
+          $("#vpage-prev")?.addEventListener("click", () => { controls.dataset.page = String(page - 1); apply(); });
+          $("#vpage-next")?.addEventListener("click", () => { controls.dataset.page = String(page + 1); apply(); });
+        }
+      }
+    } else {
+      files = (data.files || {})[v];
+      if (!Array.isArray(files) || !files.every(isValidFileRow) || files.length !== count) {
+        if (list) list.innerHTML = `<div class="dim small">Exact file list unknown for v${esc(v)}: validated record list is missing.</div>`;
+        if (stat) stat.textContent = "records missing";
+        return;
+      }
+      if (controls) controls.innerHTML = "";
+    }
+    const shown = q ? files.filter((f) => String(f[0]).toLowerCase().includes(q)) : files;
+    if (list) list.innerHTML = files.length === 0
+      ? '<div class="dim small">Validated manifest: no file records.</div>'
+      : renderVersionFiles(v, { [v]: shown });
+    if (stat) {
+      stat.textContent = data.paged && files.length
+        ? `${shown.length.toLocaleString()} shown on this page · ${count} records in v${v}`
+        : `${shown.length.toLocaleString()} records in v${v} · header ${count}`;
+    }
   };
-  sel.addEventListener("change", apply);
-  $("#vf-filter").addEventListener("input", apply);
-  apply();
+  sel.addEventListener("change", () => {
+    if (controls) controls.dataset.page = "0";
+    return apply();
+  });
+  if ($("#vf-filter")) $("#vf-filter").placeholder = data.paged ? "Filter this page…" : "Filter files…";
+  $("#vf-filter")?.addEventListener("input", apply);
+  controls?.setAttribute("data-page", "0");
+  await apply();
 }
 
 // ---- per-version file browser ----
-const vfileCache = {};  // depot -> parsed {versions, files}
+const vfileCache = {};  // depot + snapshot -> validated schema-v2 metadata
 
 async function fetchJSONgz(url) {
   // .json.gz served as application/octet-stream; decompress in the browser.
-  const resp = await fetch(url);
+  const resp = await fetch(url, { cache: "no-cache" });
   if (!resp.ok) throw new Error("not found");
   const buf = await resp.arrayBuffer();
-  if ("DecompressionStream" in window) {
+  const bytes = new Uint8Array(buf);
+  // Some hosts apply Content-Encoding and fetch has already decoded the gzip.
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    if (!("DecompressionStream" in window)) throw new Error("gzip decompression unavailable");
     const ds = new DecompressionStream("gzip");
     const stream = new Blob([buf]).stream().pipeThrough(ds);
     const text = await new Response(stream).text();
@@ -628,13 +765,24 @@ async function fetchJSONgz(url) {
   return JSON.parse(new TextDecoder().decode(buf));
 }
 
-async function loadVFiles(depot) {
-  if (vfileCache[depot]) return vfileCache[depot];
-  let data;
-  try { data = await fetchJSONgz(`data/vfiles/${depot}.json.gz`); }
-  catch (e) { return null; }
-  vfileCache[depot] = data;
-  return data;
+async function loadVFiles(depot, expectedRevision) {
+  const key = `${depot}:${expectedRevision || "legacy"}`;
+  if (vfileCache[key]) return vfileCache[key];
+  let fallback = null;
+  const query = `schema=2&revision=${encodeURIComponent(expectedRevision || "legacy")}`;
+  for (const suffix of ["json.gz", "meta.json.gz"]) {
+    try {
+      const data = await fetchJSONgz(`data/vfiles/${depot}.${suffix}?${query}`);
+      if (!data || typeof data !== "object") continue;
+      fallback ||= data;
+      if (data.schema_version === 2 && data.depot === depot &&
+          /^[0-9a-f]{64}$/.test(expectedRevision || "") && data.data_revision === expectedRevision) {
+        vfileCache[key] = data;
+        return data;
+      }
+    } catch (e) { /* Try the other layout; do not cache corrupt or legacy data. */ }
+  }
+  return fallback;
 }
 
 function renderVersionFiles(version, files) {
@@ -643,7 +791,7 @@ function renderVersionFiles(version, files) {
   return list.slice(0, max).map((f) =>
     `<div class="row"><span>${esc(f[0])}</span><span class="sz">${fmtBytes(f[1])}</span></div>`).join("") +
     (list.length > max ? `<div class="dim small">+ ${(list.length - max).toLocaleString()} more</div>` : "") ||
-    '<div class="dim small">no manifest for this version</div>';
+    '<div class="dim small">no matching file records</div>';
 }
 
 
@@ -760,7 +908,7 @@ window.addEventListener("hashchange", () => {
     const v = await (await fetch("data/verify.json")).json();
     $("#verify-badge .pct").textContent = v.pct.toFixed(1) + "%";
     $("#verify-badge .lbl").textContent =
-      `${v.indexed_versions.toLocaleString()}/${v.total_versions.toLocaleString()} versions verified`;
+      `${v.indexed_versions.toLocaleString()}/${v.total_versions.toLocaleString()} versions indexed`;
   } catch (e) { /* badge stays at —% */ }
   try {
     catalog = await (await fetch("data/catalog.json")).json();

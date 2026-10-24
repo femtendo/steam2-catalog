@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Compile Python sources
+        run: python -m py_compile build_catalog.py index_blobs.py build_vfiles.py build_site.py publish_site.py s2_parse.py
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -v
+      - name: Check browser script syntax
+        run: node --check site/app.js
+      - name: Test version browser runtime contract
+        run: node tests/frontend_harness.mjs

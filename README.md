@@ -56,7 +56,8 @@ No game files are hosted here. Download links point at the community mirrors.
 
 ## Quick start
 
-Run the whole pipeline yourself. Nothing but Python 3 is required.
+Run the whole pipeline yourself with Python 3.10 or later. The test workflow uses
+Python 3.12 and Node.js 24 (Node is only needed for the frontend checks).
 
 ```sh
 # 1. fetch the archive indexes (small)
@@ -82,12 +83,77 @@ python3 find_uncharted.py
 # 6. build map bundles for Source games
 python3 build_bundles.py
 
-# 7. generate the static site
+# 7. generate exact per-version file lists from local source blobs
+python3 build_vfiles.py
+
+# 8. generate the static site
 python3 build_site.py
 ```
 
 Every step resumes cleanly. Step 3 is the only long one (~16 GB); everything
 else runs in minutes.
+
+Run the local regression suite before publishing generated assets:
+
+```sh
+python3 -m unittest discover -s tests -v
+node --check site/app.js
+node tests/frontend_harness.mjs
+```
+
+`index_blobs.py` now keeps two separate views. `depot_paths` remains a compact
+union for search; its size is the maximum observed and its first/last versions
+are bounds. `version_manifests` and `version_file_records` retain the parsed
+records for each source BLOB, including the source digest, parser result,
+record order, file ID, flags, and revision-specific size. The vfiles builder
+emits only validated per-revision records. A missing, ambiguous, invalid, or
+partial manifest is marked unknown instead of being filled from version ranges.
+When migrating an existing local database, rerun `index_blobs.py` after making
+the original `.blob` files available; it backfills the new tables from those
+source manifests. `build_vfiles.py` writes both inspectable JSON and
+deterministic `.json.gz` assets expected by the browser. Existing generated
+vfiles without schema version 2 are not treated by the updated browser as
+exact history. The parser also handles Steam2's high-bit/auxiliary-node size
+encoding for files larger than 2 GiB; this is covered by a synthetic manifest
+test, not by a claim that the catalog archive contains such a PvZ file.
+
+The indexer rehashes local source bytes before reusing valid records. Both parser
+and validator source fingerprints are recorded; older validation results become
+`stale_parser` until their source is reindexed. Exact means a unique source whose
+local SHA matches its filename and whose structure/counts pass validation. It is
+not an assertion about the archive publisher's identity or a file-content hash.
+Sizes above JavaScript's safe integer limit are emitted as decimal strings.
+Depot detail, vfiles metadata, and pages share a `data_revision` fingerprint.
+The browser rejects mismatched snapshots and labels older V1 or V2 output without
+that identity as unvalidated. Rebuild both `build_vfiles.py` and `build_site.py`
+into a staging directory before replacing a public static snapshot.
+
+Defensive limits currently allow 128 MiB per metadata container, 500,000 nodes,
+1,024 path levels, 32,767 characters per relative path/component, and 64 MiB of
+expanded path characters. Name decoding is bounded before retaining names, and
+index batches are flushed by BLOB count, record count, or path characters. These
+are implementation budgets, not established archive maxima or a process-RSS
+guarantee. A source exceeding a budget gets `resource_limit`, not a claim that its
+historical bytes are corrupt. The named constants in `s2_parse.py` are the current
+configuration surface; changing them changes the parser fingerprint and requires
+reindexing. Do not remove the bounds to accept an unreviewed input.
+
+For migration, keep the old database and static build as a rollback snapshot.
+`build_catalog.py` recreates the database; it is not a migration command. The old
+`depot_paths` table remains a legacy search union and is not purged or corrected
+from inferred version lists. To demonstrate a separate verified union and
+coverage gate without touching historical inputs, run the isolated fixture:
+
+```sh
+python3 tests/integration_demo.py --output ../steam2-history-demo --interrupt-check --serve
+```
+
+The output directory must be new and cannot overlap the repository's historical
+`index`, `blobs`, or `site` paths. The demo uses synthetic depot IDs, tests an
+interrupted transaction and resumption, and builds a separate `verified_union.sqlite`
+with source provenance. Its default `complete_paths` view excludes depots with
+missing sources; completeness is relative to the known local inventory. No game
+files or external assets are fetched by the demo.
 
 ## How a depot gets flagged
 
@@ -127,7 +193,9 @@ verified against the mirrors in minutes. Confirmed finds are written up in
 s2_parse.py         blob container + manifest reader (no decryption key needed)
 build_catalog.py    SQLite catalog from the archive indexes
 download_blobs.py   resumable, sha256-verified blob downloader with mirror failover
-index_blobs.py      parses every manifest into per-depot paths + version ranges
+index_blobs.py      parses manifests into exact revision records + search union
+build_vfiles.py     emits schema-v2 per-revision lists and validation states
+tests/              synthetic regression tests for historical presence/size
 find_uncharted.py   discovery engine — flags depots worth a closer look
 build_bundles.py    extracts and verifies maps, zips them per game
 build_site.py       generates the static site from the index
